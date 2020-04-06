@@ -1,0 +1,151 @@
+---
+title: "Kmer_GC_length"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(Biostrings)
+
+```
+
+```{r, read in test dat}
+longest_3UTR_FL <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FL.fa")
+longest_3UTR_FL_ctrl <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FL_ctrl.fa")
+longest_3UTR_FLvT <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FLvT.fa")
+longest_3UTR_FLvT_ctrl <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FLvt_ctrl.fa")
+
+```
+
+```{r, kcount}
+#This function compares kmer content between two DNAStringSets and returns a table with statistics for frequency of each kmer
+#it doesnt take terribly long and checks that case sequences are excluded from control sequences.
+#we could probably add options for pvalue correction
+
+kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
+    
+   if(any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
+     warning("some sequences in case set are also in the control set. This is not recommended.")
+   }
+  
+   print("counting kmers...", quote = FALSE)
+   case_kmer <- oligonucleotideFrequency(caseDNAStringSet, width = k) %>% colSums() %>% data.frame(kmer = names(.), case = .) %>% as_tibble()
+   ctrl_kmer <- oligonucleotideFrequency(ctrlDNAStringSet, width = k) %>% colSums() %>% data.frame(kmer = names(.), ctrl = .) %>% as_tibble()
+   print("counting complete.", quote= FALSE)
+
+  #compare kmers between case and ctrl takes ~30s
+  
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  } 
+    
+  print("calculating kmer statistics...", print = FALSE)
+  
+  kmer_stats <- left_join(ctrl_kmer, case_kmer) %>% 
+    na.omit() %>% 
+    mutate(case_freq = case / sum(case),
+           ctrl_freq = ctrl / sum(ctrl), 
+           log2FC = log2(case_freq/ctrl_freq),
+           case_tot = sum(case)-case,
+           ctrl_tot = sum(ctrl)-ctrl) %>% 
+    rowwise() %>% 
+    mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+           p_adj = p.adjust(pval, method = "BH", 4^k)) %>% 
+    dplyr::select(kmer, ctrl_freq, case_freq, log2FC, pval, p_adj) 
+  
+  print("calculations complete.", quote = FALSE)
+  
+  kmer_stats
+}
+
+FL_kmer <- kmer_compare(longest_3UTR_FL, longest_3UTR_FL_ctrl, 6)
+FLvT_kmer <- kmer_compare(longest_3UTR_FLvT, longest_3UTR_FLvT_ctrl, 6)
+
+```
+
+```{r, length}
+#This compares sequence length between case and control DNAStringSets
+#I am really uncertain of what the output should be...
+#The table right now includes means, wilcox.test resutls and cliffs delta effect size metrics...
+#we could add options as to what test to perform rather than just wilcox.test
+#feedback is welcome
+
+length_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
+  
+  if(any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
+     warning("some sequences in case set are also in the control set. This is not recommended.")
+  }
+  
+  wilcox.p <- wilcox.test(width(caseDNAStringSet), width(ctrlDNAStringSet))$p.value
+  mean_case <- mean(width(caseDNAStringSet))
+  mean_ctrl <- mean(width(ctrlDNAStringSet))
+  mean_FC <- mean_case/mean_ctrl
+  CliffDelta <- effsize::cliff.delta(width(caseDNAStringSet), width(ctrlDNAStringSet))$estimate
+  lowerCD <- effsize::cliff.delta(width(caseDNAStringSet), width(ctrlDNAStringSet))$conf.int[1]
+  upperCD <- effsize::cliff.delta(width(caseDNAStringSet), width(ctrlDNAStringSet))$conf.int[2]
+  
+  data.frame(wilcox.p, mean_case, mean_ctrl, mean_FC, CliffDelta, lowerCD, upperCD)
+  
+}
+
+```
+
+```{r, GC}
+#This is similar to the last function but with GC content. I again am uncertain of the output.
+
+GC_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
+  
+  if(any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
+  warning("some sequences in case set are also in the control set. This is not recommended.")
+  }
+  
+  GC_case <- letterFrequency(caseDNAStringSet, "GC") / width(caseDNAStringSet)
+  GC_ctrl <- letterFrequency(ctrlDNAStringSet, "GC") / width(ctrlDNAStringSet)
+  wilcox.p <- wilcox.test(GC_case, GC_ctrl)$p.value
+  mean_case <- mean(GC_case)
+  mean_ctrl <- mean(GC_ctrl)
+  mean_FC <- mean_case/mean_ctrl
+  CliffDelta <- effsize::cliff.delta(GC_case, GC_ctrl)$estimate
+  lowerCD <- effsize::cliff.delta(GC_case, GC_ctrl)$conf.int[1]
+  upperCD <- effsize::cliff.delta(GC_case, GC_ctrl)$conf.int[2]
+  
+  data.frame(wilcox.p, mean_case, mean_ctrl, mean_FC, CliffDelta, lowerCD, upperCD)
+}
+
+```
+
+```{r, pmws}
+
+mm_motif_paths <- list.files(path = "data/CisBPRNAdat/mm/pwms_all_motifs", full.names = TRUE)
+mm_motif_info <- file.info(mm_motif_paths)
+mm_motif_info <- mm_motif_info[mm_motif_info$size != 0, ]
+mm_motifs <- mm_motif_info %>% as_tibble(rownames = "PATH") %>% mutate(motif = str_match(PATH, "motifs/(.*?).txt")[,2]) %>% dplyr::select(PATH, motif)
+
+RBP_info <- read.table("data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", header = TRUE, sep = "\t")
+RBP_info <- RBP_info %>% as_tibble() %>% dplyr::select(Motif_ID, RBP_Name) %>% filter(Motif_ID != ".") %>% group_by(Motif_ID) %>% summarise(RBP_name = dplyr::first(RBP_Name))
+
+mm_motifs <- left_join(mm_motifs, RBP_info, by = c("motif" = "Motif_ID"))
+
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  }
+
+mm_motifs <- mm_motifs %>%
+  mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))), 
+         case = unlist(lapply(PWM, function(x) lapply(longest_3UTR_FL, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+         ctrl = unlist(lapply(PWM, function(x) lapply(longest_3UTR_FL_ctrl, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+         case_freq = case / sum(width(longest_3UTR_FL)), 
+         ctrl_freq = ctrl / sum(width(longest_3UTR_FL_ctrl)), 
+         log2FC = log2(case_freq/ctrl_freq),
+         case_tot = sum(case)-case,
+         ctrl_tot = sum(ctrl)-ctrl) %>% 
+  rowwise() %>% 
+  mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+           p_adj = p.adjust(pval, method = "BH", nrow(mm_motifs))) %>% 
+    dplyr::select(motif, RBP_name, ctrl_freq, case_freq, log2FC, pval, p_adj)
+
+```
+

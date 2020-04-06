@@ -1,0 +1,173 @@
+---
+title: "kmerStart"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(kmer)
+library(transite)
+library(cowplot)
+
+```
+
+
+```{r, load dat and get seq}
+#these are the longest 3'UTR sequences for each mouse gene taken from biomaRt
+longest_3utr_Seq <- readRDS(file = "C:/Users/rgoer/Documents/CAD_ZBP1_Rescue_quants/longest_3UTR_seq_biomaRt.txt")
+
+#these are localized genes from ZBP1 fractionation (FL vs GFP)
+FL_loc_gene <- readRDS(file = "C:/Users/rgoer/Documents/CAD_ZBP1_Rescue_quants/FLlocgenes01.txt")
+FL_ctrl_gene <- readRDS(file = "C:/Users/rgoer/Documents/CAD_ZBP1_Rescue_quants/FLctrlgenes.txt")
+
+#this removes foreground genes from background genes...
+FL_ctrl_gene <- anti_join(FL_ctrl_gene, FL_loc_gene)
+
+#This creates a tibble with the gene and its 3'UTR sequence
+FL_loc_seq <- left_join(FL_loc_gene, longest_3utr_Seq) %>% 
+  as_tibble() %>% 
+  rename(seq = `3utr`) %>% 
+  filter(seq != "Sequence unavailable", length > 6) %>% 
+  select(-length) %>% 
+  mutate(sepseq = strsplit(tolower(seq), "")) %>% 
+  select(ensembl_gene_id, seq, sepseq)
+
+FL_ctrl_seq <- left_join(FL_ctrl_gene, longest_3utr_Seq) %>% 
+  as_tibble() %>% rename(seq = `3utr`) %>% 
+  filter(seq != "Sequence unavailable", length > 6) %>% 
+  select(-length) %>%
+  mutate(sepseq = strsplit(tolower(seq), "")) %>% 
+  select(ensembl_gene_id, seq, sepseq)
+
+
+```
+
+```{r, kcount}
+fisher <- function(a,b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+}
+
+#count kmers for each gene
+FL_kmer <- kcount(pull(FL_loc_seq, sepseq), k = 6) %>%
+  colSums() %>% 
+  data.frame(kmer = names(.), value = .) %>% 
+  as_tibble() %>% 
+  rename(FL = value)
+
+
+### kcount on nearly all the UTRs takes ~4 minutes 
+FL_ctrl_kmer <- kcount(pull(FL_ctrl_seq, sepseq), k = 6) %>% 
+  colSums() %>% 
+  data.frame(kmer = names(.), value = .) %>% 
+  as_tibble() %>%
+  rename(ctrl = value)
+
+#compare kmers between case and ctrl takes ~30s
+FL_kmer_stats <- left_join(FL_ctrl_kmer, FL_kmer) %>% 
+  na.omit() %>% 
+  mutate(ctrl_freq = ctrl / sum(ctrl), 
+         FL_freq = FL / sum(FL), 
+         log2FC = log2(FL_freq/ctrl_freq),
+         c_tot = sum(ctrl)-ctrl, 
+         FL_tot = sum(FL)-FL) %>% 
+  rowwise() %>% 
+  mutate(pval = fisher(FL, ctrl, FL_tot, c_tot)) %>% 
+  ungroup() %>%
+  mutate(p_adj = p.adjust(pval, method = "BH", 4096)) %>% 
+  select(kmer, ctrl_freq, FL_freq, log2FC, pval, p_adj) 
+
+
+```
+
+```{r,  transite}
+#This is fast
+t_FL_kmer <- generateKmers(pull(FL_loc_seq, seq), 6)
+t_ctrl_kmer <- generateKmers(pull(FL_ctrl_seq, seq), 6)
+t_kmer_stats <- computeKmerEnrichment(t_FL_kmer, t_ctrl_kmer) %>% as_tibble() %>% mutate(kmer = tolower(names(t_FL_kmer)))
+
+```
+
+```{r, direct comp}
+kmer_compare <- left_join(FL_kmer_stats, t_kmer_stats) 
+
+kmer_compare %>% 
+  ggplot(aes(FL_freq, foreground.count)) + 
+  geom_point() + 
+  geom_smooth(aes(FL_freq, foreground.count), method = lm, se = FALSE, inherit.aes = FALSE) +
+  theme_cowplot() +
+  labs(x = "Kmer frequency in FL (kcount)", y = "kmer count in FL (transite)")
+
+kmer_compare %>% 
+  ggplot(aes(log2FC, log2(enrichment))) + 
+  geom_point() + 
+  geom_smooth(aes(log2FC, log2(enrichment)), method = lm, se = FALSE, inherit.aes = FALSE) + 
+  theme_cowplot() + 
+  geom_abline(intercept = 0, slope = 1, col = "Red") +
+  labs(x = "log2FC in FL / ctrl (kcount)", y = "log2(enrichment) in FL/ctrl (transite)")
+
+kmer_compare %>% 
+  ggplot(aes(p_adj, adj.p.value)) +
+  geom_point() +
+  geom_smooth(aes(p_adj, adj.p.value), method = lm, se = FALSE, inherit.aes = FALSE) +
+  theme_cowplot() + 
+  geom_abline(intercept = 0, slope = 1, col = "Red") +
+  labs(x = "p.adjusted (kcount)", y = "p.adjusted (transite)")
+
+```
+
+```{r, volcanoes of kmers}
+p <- kmer_compare %>% 
+  mutate(RG_sig = ifelse(p_adj < 0.05, "< 0.05", "ns"), 
+         t_sig = ifelse(adj.p.value < 0.05, "< 0.05", "ns"))
+
+p %>% 
+  ggplot(aes(x = log2(enrichment), y = -log(adj.p.value), col = t_sig, alpha = t_sig)) + 
+  geom_point() +
+  theme_cowplot() + 
+  geom_hline(yintercept = -log(0.05)) + 
+  scale_color_manual(values = c("Red", "Black")) + 
+  scale_alpha_manual(values = c(1, 0.01)) + 
+  geom_text(data = subset(p, t_sig == "< 0.05"), aes(label = kmer), nudge_y = 0.25) +
+  labs(title = "Transite kmer enrichment")
+
+p %>% 
+  ggplot(aes(x = log2FC, y = -log(p_adj), col = RG_sig, alpha = RG_sig)) + 
+  geom_point() +
+  theme_cowplot() +
+  geom_hline(yintercept = -log(0.05)) +
+  scale_color_manual(values = c("Red", "Black")) + 
+  scale_alpha_manual(values = c(1, 0.01)) + 
+  geom_text(data = subset(p, RG_sig == "< 0.05"), aes(label = kmer), nudge_y = 0.25) +
+  labs(title = "kcount kmer enrichment")
+
+```
+
+```{r, transite motif analysis}
+#this takes < 1 min
+#FL <- pull(FL_loc_seq, seq)
+#names(FL) <- pull(FL_loc_seq, ensembl_gene_id)
+#t_FL_motif <- scoreTranscripts(FL)
+
+#this takes > 5 min
+#FL_ctrl_seq <- FL_ctrl_seq %>% mutate(N = ifelse(grepl(x = seq, pattern = "N"), "T", "F")) %>% filter(N == "F")
+#ctrl <- pull(FL_ctrl_seq, seq)
+#names(ctrl) <- pull(FL_ctrl_seq, ensembl_gene_id)
+#t_ctrl_motif <- scoreTranscripts(ctrl)
+
+#this is fast
+#t_motif_stats <- calculateMotifEnrichment(t_FL_motif$df,
+#                         t_ctrl_motif$df,
+#                         t_ctrl_motif$total.sites, t_ctrl_motif$absolute.hits,
+#                         length(FL)) 
+
+##doesn't pull out anything significant.
+
+```
+
+
+
+
+
+
