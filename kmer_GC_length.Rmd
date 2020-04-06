@@ -147,5 +147,56 @@ mm_motifs <- mm_motifs %>%
            p_adj = p.adjust(pval, method = "BH", nrow(mm_motifs))) %>% 
     dplyr::select(motif, RBP_name, ctrl_freq, case_freq, log2FC, pval, p_adj)
 
+#This function compare the freqency of motifs in a case and control DNAStringSet
+#begin with folder containing PWM for motifs of intrest (downloaded from CisBPRNA called "pwms_all_motifs")
+#also need RBP info for the motifs (dowloaded from CisBPRNA called "RBP_Information_all_motifs")
+
+cisBPRNA_compare <- function(motif_path, RBPinfo, caseDNAStringset, ctrlDNAStringSet){
+  
+  #get paths to each motif pwm
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(motif_paths)
+  motif_info <- motif_info[motif_info$size != 0, ]
+  motifs <- motif_info %>% 
+    as_tibble(rownames = "PATH") %>% 
+    mutate(motif = str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
+    dplyr::select(PATH, motif)
+
+  #merge motif paths with RBP info
+  
+  RBP_info <- read.table(RBPinfo, header = TRUE, sep = "\t")
+  RBP_info <- RBP_info %>% 
+    as_tibble() %>% 
+    dplyr::select(Motif_ID, RBP_Name) %>% 
+    filter(Motif_ID != ".") %>% 
+    group_by(Motif_ID) %>%
+    summarise(RBP_name = dplyr::first(RBP_Name))
+
+  motifs <- left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
+
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  }
+
+  motifs <- motifs %>%
+    mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))), 
+           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+           case_freq = case / sum(width(caseDNAStringset)), 
+           ctrl_freq = ctrl / sum(width(ctrlDNAStringSet)), 
+           log2FC = log2(case_freq/ctrl_freq),
+           case_tot = sum(case)-case,
+           ctrl_tot = sum(ctrl)-ctrl) %>% 
+    rowwise() %>% 
+    mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+             p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
+      dplyr::select(motif, RBP_name, ctrl_freq, case_freq, log2FC, pval, p_adj)
+
+}
+
+FL_motif <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FL, longest_3UTR_FL_ctrl)
+
 ```
 

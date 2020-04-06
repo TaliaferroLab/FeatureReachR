@@ -12,7 +12,6 @@ library(GenomicFeatures)
 library(GenomicRanges)
 library("BSgenome.Hsapiens.NCBI.GRCh38")
 library("BSgenome.Mmusculus.UCSC.mm10")
-
 ```
 
 #Here are my attempts to re-invent the wheel with a few self written functions 
@@ -25,8 +24,6 @@ library("BSgenome.Mmusculus.UCSC.mm10")
 #this requires the package stringr
 ##TODO: 
 ##      expand to non-GENCODE GFF3s? 
-
-
 GFF2df <- function(genomeGFF3, filter = TRUE, protein.coding = FALSE){
   
   gff_df <- read.table(file = genomeGFF3, 
@@ -56,21 +53,16 @@ GFF2df <- function(genomeGFF3, filter = TRUE, protein.coding = FALSE){
    gff_df
   
 }
-
 #These take less than 4 minutes each.
-
 #mmGFF <- GFF2df("data/gencode.vM20.annotation.gff3.gz")
 #hsGFF <- GFF2df("data/gencode.v33.annotation.gff3.gz")
-
 ```
 
 ```{r, subsetGFF3}
 #This subsets the GFF dataframe by a list of transcripts of interest.
 #it also can return a sequence type of "three_prime_UTR", "five_prime_UTR", "exon", or "CDS"
-
 mm_tx <- c("ENSMUST00000159265.1", "ENSMUST00000027032.5", "ENSMUST00000130201.7", "ENSMUST00000157375.1")
 hs_tx <- c("ENST00000456328.2", "ENST00000338338.9", "ENST00000478641.5", "ENST00000356026.10", "ENST00000607222.1", "ENST00000342066.8")
-
 subsetGFFdf <- function(GFF_df, transcript_list, seq_type){
   
   s_gff_df <- GFF_df %>% filter(transcript_id %in% transcript_list) %>% filter(type == seq_type)
@@ -78,24 +70,19 @@ subsetGFFdf <- function(GFF_df, transcript_list, seq_type){
   s_gff_df
   
 }
-
 #sGFF <- subsetGFFdf(hsGFF, hs_tx, "CDS")
 #sGFF <- subsetGFFdf(mmGFF, mm_tx, "CDS")
-
 ```
 
 ```{r, writeGFF}
 #This writes a gff3 file from a gff_df
-
 writeGFF <- function(gff_df, file_name){
   gff_df <- gff_df %>% select(seqid, source, type, start, end, score, strand, phase, attributes) 
   colnames(gff_df) <- NULL
   rownames(gff_df) <- NULL
   write.table(gff_df, paste(file_name, ".gff3", sep = ""), row.names = FALSE, quote = FALSE)
 }
-
 #writeGFF(sGFF, "data/test")
-
 ```
 
 #Here is where my attempts to re-invent the wheel fail
@@ -108,16 +95,13 @@ writeGFF <- function(gff_df, file_name){
 ##TODO
 ##    Big problem here, human genome fasta is too large to make a string set...maybe fixable? maybe not...
 ##    this is where I switched to using BSgenome and other packages
-
 fa2DNAstringSet <- function(fa){
   fa <-  readDNAStringSet(fa)
   names(fa) <- sub(" .*", "", names(fa))
   fa
 }
-
 #mmGenome_DNAstringSet <- fa2DNAstringSet("data/GRCm38.p6.genome.fa")
 #hsGenome_DNAstringSet <- fa2DNAstringSet("data/GRCh38.p13.genome.fa")
-
 ```
 
 ```{r, GFF2FA}
@@ -125,8 +109,6 @@ fa2DNAstringSet <- function(fa){
 ##TODO:
 ##     need to finish this
 ##     maybe wont though because fasta genomes are so big...
-
-
 GFF2FA <- function(GFF_df, genome_DNAstringSet, fa_name){
   
   coord_list <- GFF_df %>% mutate(range = paste(start, end, sep = ":")) %>% group_by(gene_id, transcript_id) %>% summarize(coord_list = list(range)) %>% pull(., coord_list)
@@ -135,9 +117,7 @@ GFF2FA <- function(GFF_df, genome_DNAstringSet, fa_name){
   
   
 }
-
 #gFF2FA(sGFF, DNAstringset, "data/test.fa")
-
 ```
 
 
@@ -146,13 +126,9 @@ GFF2FA <- function(GFF_df, genome_DNAstringSet, fa_name){
 
 
 ```{r, }
-
 #hs_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/gencode.v33.annotation.gff3.gz", format = "gff3", organism = "Homo sapiens")
 #seqlevelsStyle(hs_gff) <- "NCBI"
-
 #mm_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/gencode.vM20.annotation.gff3.gz", format = "gff3", organism = "Mus musculus")
-
-
 #But first! want to filter those gffs?
 filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
   gff <- rtracklayer::import(gff)
@@ -178,15 +154,12 @@ filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
   txdbGFF
   
 }
-
 mm_f_gff <- filter_Tx("data/gencode.vM20.annotation.gff3.gz")
 hs_f_gff <- filter_Tx("data/gencode.v33.annotation.gff3.gz")
-
 ```
 
 ```{r, gettxfa}
 ##This function writes gff3 files or fasta files from genome gff3s subsetted with a transcript list
-
 getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   #Check that transcript list contains transcripts
   
@@ -284,18 +257,14 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   
 print(paste("Querried ", length(tx_gff), " of ", length(tx_list), " requested genes.", sep = ""), quote = FALSE)
 print(paste("Querried ", sum(width(seq))/1000, " KB of sequence.", sep = ""), quote = FALSE)
-
 }
-
 #getTxOut(hs_gff, hs_tx, "CDS", "data/test", "fa")
-
 ```
 
 
 ```{r, longestDF}
 #This creates a dataframe of the transcripts with the longest features for each gene in a gff_df file
 #this takes a minute or two so its better to run it once.
-
 make_longest_df <- function(TxDb_gff){ 
   #identify transcript with longest feature for each gene
   
@@ -340,18 +309,14 @@ make_longest_df <- function(TxDb_gff){
   longest_tx
   
 }
-
 #longest_mm <- make_longest_df(mm_f_gff)
 #longest_hs <- make_longest_df(hs_f_gff)
-
 ```
 
 ```{r, gene2longesttx}
 #This takes a gene list and returns a list of transcripts with the longest feature of interest
-
 #hs_gene <- c("ENSG00000000419.12", "ENSG00000001167.14", "ENSG00000000938.13")
 #mm_gene <- 
-
 gene2longestTx <- function(longest_df, gene_list, seq_type){
    #Check that gene list contains genes
   
@@ -383,9 +348,7 @@ gene2longestTx <- function(longest_df, gene_list, seq_type){
   tx_list
   
 }
-
 #gene2longestTx(longest_hs, hs_gene, "UTR3")
-
 ```
 
 ```{r, ZBP1dat}
@@ -393,22 +356,15 @@ gene2longestTx <- function(longest_df, gene_list, seq_type){
 #FL_genes <- readRDS("data/ZBP1dat/FLlocgenes05.txt")
 #FL_ctrl_genes <- readRDS("data/ZBP1dat/FLctrlgenes.txt")
 #FL_ctrl_genes <- anti_join(FL_ctrl_genes, FL_genes)
-
 #FLvT_genes <- readRDS("data/ZBP1dat/FLvstrunclocgenes05")
 #FLvT_ctrl_genes <- readRDS("data/ZBP1dat/FLversustruncctrlgenes.txt")
 #FLvT_ctrl_genes <- anti_join(FLvT_ctrl_genes, FLvT_genes)
-
 #longest_3UTR_FL_Tx <- gene2longestTx(longest_mm, pull(FL_genes, ensembl_gene_id), "UTR3")
 #longest_3UTR_FL_ctrl_Tx <- gene2longestTx(longest_mm, pull(FL_ctrl_genes, ensembl_gene_id), "UTR3")
 #longest_3UTR_FLvT_Tx <- gene2longestTx(longest_mm, pull(FLvT_genes, ensembl_gene_id), "UTR3")
 #longest_3UTR_FLvT_ctrl_Tx <- gene2longestTx(longest_mm, pull(FLvT_ctrl_genes, ensembl_gene_id), "UTR3")
-
 #getTxOut(mm_f_gff, longest_3UTR_FL_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FL", "fa")
 #getTxOut(mm_f_gff, longest_3UTR_FL_ctrl_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FL_ctrl", "fa")
 #getTxOut(mm_f_gff, longest_3UTR_FLvT_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FLvT", "fa")
 #getTxOut(mm_f_gff, longest_3UTR_FLvT_ctrl_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FLvt_ctrl", "fa")
-
 ```
-
-
-
