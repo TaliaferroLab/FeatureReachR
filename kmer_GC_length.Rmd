@@ -11,14 +11,41 @@ library(Biostrings)
 ```
 
 ```{r, read in test dat}
-longest_3UTR_FL <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FL.fa")
-longest_3UTR_FL_ctrl <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FL_ctrl.fa")
-longest_3UTR_FLvT <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FLvT.fa")
-longest_3UTR_FLvT_ctrl <- readDNAStringSet("data/ZBP1dat/longest_3UTR_FLvt_ctrl.fa")
+#MT_FMR1 <- readDNAStringSet("data/FMR1dat/SD3deltaLRGenes.longest3UTR.fa")
+#MT_FMR1_ctrl <- readDNAStringSet("data/FMR1dat/UnchangeddeltaLRGenes.longest3UTR.fa")
 
+#FMR1_genes <- substr(names(MT_FMR1), 1, 18)
+#FMR1_genes_ctrl <- substr(names(MT_FMR1_ctrl), 1, 18)
+           
+#FMR1_UTR3_tx <- gene2longestTx(longest_mm, FMR1_genes, "UTR3")
+#FMR1_UTR3_tx_ctrl <- gene2longestTx(longest_mm, FMR1_genes_ctrl, "UTR3")
+
+#getTxOut(mm_f_gff, FMR1_UTR3_tx, "UTR3", "data/FMR1dat/longest_3UTR_FMR1", "fa")
+#getTxOut(mm_f_gff, FMR1_UTR3_tx_ctrl, "UTR3", "data/FMR1dat/longest_3UTR_FMR1_ctrl", "fa")
+
+longest_3UTR_FMR1 <-readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1.fa")
+longest_3UTR_FMR1_ctrl <- readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1_ctrl.fa")
+  
 ```
 
-```{r, kcount}
+```{r, kmer functions}
+#This function simply returns the full counts of each kmer for each gene in a set
+#access to raw data at a gene level.
+
+kmer_by_gene <- function(DNAStringSet, k){
+
+   print("counting kmers...", quote = FALSE)
+   kmer_counts <- oligonucleotideFrequency(DNAStringSet, width = k) %>% 
+     as_tibble() %>% 
+     mutate(gene = names(DNAStringSet)) %>% 
+     dplyr::select(gene, everything())
+   
+   print("counting complete.", quote= FALSE)
+   
+   kmer_counts
+}
+
+
 #This function compares kmer content between two DNAStringSets and returns a table with statistics for frequency of each kmer
 #it doesnt take terribly long and checks that case sequences are excluded from control sequences.
 #we could probably add options for pvalue correction
@@ -45,30 +72,37 @@ kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
   
   kmer_stats <- left_join(ctrl_kmer, case_kmer) %>% 
     na.omit() %>% 
-    mutate(case_freq = case / sum(case),
-           ctrl_freq = ctrl / sum(ctrl), 
+    mutate(ctrl_freq = ctrl / sum(ctrl),
+           case_freq = case / sum(case),
            log2FC = log2(case_freq/ctrl_freq),
-           case_tot = sum(case)-case,
-           ctrl_tot = sum(ctrl)-ctrl) %>% 
+           ctrl_tot = sum(ctrl)-ctrl,
+           case_tot = sum(case)-case) %>% 
     rowwise() %>% 
     mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
-           p_adj = p.adjust(pval, method = "BH", 4^k)) %>% 
-    dplyr::select(kmer, ctrl_freq, case_freq, log2FC, pval, p_adj) 
+           p_adj = p.adjust(pval, method = "BH", 4^k))
   
   print("calculations complete.", quote = FALSE)
   
   kmer_stats
 }
 
-FL_kmer <- kmer_compare(longest_3UTR_FL, longest_3UTR_FL_ctrl, 6)
-FLvT_kmer <- kmer_compare(longest_3UTR_FLvT, longest_3UTR_FLvT_ctrl, 6)
+#kmer_by_gene(longest_3UTR_FMR1, 6)
+kmer_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl, 6)
 
 ```
 
-```{r, length}
+```{r, length functions}
+#this returns length of each sequence in a nice tibble
+
+get_length <- function(DNAStringSet){
+  as_tibble(data.frame(gene = names(DNAStringSet),
+             length = width(DNAStringSet)))
+}
+  
+
 #This compares sequence length between case and control DNAStringSets
 #I am really uncertain of what the output should be...
-#The table right now includes means, wilcox.test resutls and cliffs delta effect size metrics...
+#The table right now includes means, wilcox.test results and cliffs delta effect size metrics...
 #we could add options as to what test to perform rather than just wilcox.test
 #feedback is welcome
 
@@ -90,9 +124,20 @@ length_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
   
 }
 
+get_length(longest_3UTR_FMR1)
+length_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
+
 ```
 
 ```{r, GC}
+#this returns GC of each sequence in a nice tibble
+
+get_GC <- function(DNAStringSet){
+  as_tibble(data.frame(gene = names(DNAStringSet),
+                       GC = as.integer(letterFrequency(DNAStringSet, "GC")),
+                       length = width(DNAStringSet)))
+}
+
 #This is similar to the last function but with GC content. I again am uncertain of the output.
 
 GC_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
@@ -114,38 +159,50 @@ GC_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
   data.frame(wilcox.p, mean_case, mean_ctrl, mean_FC, CliffDelta, lowerCD, upperCD)
 }
 
+get_GC(longest_3UTR_FMR1)
+GC_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
+
 ```
 
 ```{r, pmws}
+#This function simply returns every motif counts for each gene
+#begin with folder containing PWM for motifs of intrest (downloaded from CisBPRNA called "pwms_all_motifs")
+#also need RBP info for the motifs (dowloaded from CisBPRNA called "RBP_Information_all_motifs")
+cisBPRNA_by_gene <- function(motif_path, RBPinfo, DNAStringset){
+  
+  #get paths to each motif pwm
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(motif_paths)
+  motif_info <- motif_info[motif_info$size != 0, ]
+  motifs <- motif_info %>% 
+    as_tibble(rownames = "PATH") %>% 
+    mutate(motif = str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
+    dplyr::select(PATH, motif)
 
-mm_motif_paths <- list.files(path = "data/CisBPRNAdat/mm/pwms_all_motifs", full.names = TRUE)
-mm_motif_info <- file.info(mm_motif_paths)
-mm_motif_info <- mm_motif_info[mm_motif_info$size != 0, ]
-mm_motifs <- mm_motif_info %>% as_tibble(rownames = "PATH") %>% mutate(motif = str_match(PATH, "motifs/(.*?).txt")[,2]) %>% dplyr::select(PATH, motif)
+  #merge motif paths with RBP info
+  
+  RBP_info <- read.table(RBPinfo, header = TRUE, sep = "\t")
+  RBP_info <- RBP_info %>% 
+    as_tibble() %>% 
+    dplyr::select(Motif_ID, RBP_Name) %>% 
+    filter(Motif_ID != ".") %>% 
+    group_by(Motif_ID) %>%
+    summarise(RBP_name = dplyr::first(RBP_Name))
 
-RBP_info <- read.table("data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", header = TRUE, sep = "\t")
-RBP_info <- RBP_info %>% as_tibble() %>% dplyr::select(Motif_ID, RBP_Name) %>% filter(Motif_ID != ".") %>% group_by(Motif_ID) %>% summarise(RBP_name = dplyr::first(RBP_Name))
+  motifs <- left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
 
-mm_motifs <- left_join(mm_motifs, RBP_info, by = c("motif" = "Motif_ID"))
+  motifs <- motifs %>%
+    mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))))
+  
+  counts_list <- lapply(motifs$PWM, function(x) lapply(DNAStringset, function(y) countPWM(x, y)) %>% unlist() %>% as_tibble(rownames = "gene"))
+  names(counts_list) <- motifs$motif
+              
+  motif_by_gene <- bind_rows(counts_list, .id = "motif") %>% spread(gene, value = value) %>% left_join(., RBP_info, by = c("motif" = "Motif_ID")) %>% dplyr::select(motif, RBP_name, everything())            
+  
+  motif_by_gene
+}
 
-  fisher <- function(a, b, c, d){
-  mat <- matrix(c(a, b, c, d), nr = 2)
-  fisher.test(mat, alternative = "two.sided")$p.value
-  }
-
-mm_motifs <- mm_motifs %>%
-  mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))), 
-         case = unlist(lapply(PWM, function(x) lapply(longest_3UTR_FL, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
-         ctrl = unlist(lapply(PWM, function(x) lapply(longest_3UTR_FL_ctrl, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
-         case_freq = case / sum(width(longest_3UTR_FL)), 
-         ctrl_freq = ctrl / sum(width(longest_3UTR_FL_ctrl)), 
-         log2FC = log2(case_freq/ctrl_freq),
-         case_tot = sum(case)-case,
-         ctrl_tot = sum(ctrl)-ctrl) %>% 
-  rowwise() %>% 
-  mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
-           p_adj = p.adjust(pval, method = "BH", nrow(mm_motifs))) %>% 
-    dplyr::select(motif, RBP_name, ctrl_freq, case_freq, log2FC, pval, p_adj)
 
 #This function compare the freqency of motifs in a case and control DNAStringSet
 #begin with folder containing PWM for motifs of intrest (downloaded from CisBPRNA called "pwms_all_motifs")
@@ -192,11 +249,16 @@ cisBPRNA_compare <- function(motif_path, RBPinfo, caseDNAStringset, ctrlDNAStrin
     rowwise() %>% 
     mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
              p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
-      dplyr::select(motif, RBP_name, ctrl_freq, case_freq, log2FC, pval, p_adj)
+    dplyr::select(RBP_name, motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj)
 
 }
 
-FL_motif <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FL, longest_3UTR_FL_ctrl)
+#cisBPRNA_by_gene("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1)
+
+#FMR1_motif <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
+#saveRDS(FMR1_motif, "data/FMR1dat/cisbpMotif_FMR1_compare.txt")
+FMR1_motif <- readRDS("data/FMR1dat/cisbpMotif_FMR1_compare.txt")
+FMR1_motif
 
 ```
 

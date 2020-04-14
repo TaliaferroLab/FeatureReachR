@@ -126,9 +126,9 @@ GFF2FA <- function(GFF_df, genome_DNAstringSet, fa_name){
 
 
 ```{r, }
-#hs_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/gencode.v33.annotation.gff3.gz", format = "gff3", organism = "Homo sapiens")
+#hs_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/Gencodedat/gencode.v33.annotation.gff3.gz", format = "gff3", organism = "Homo sapiens")
 #seqlevelsStyle(hs_gff) <- "NCBI"
-#mm_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/gencode.vM20.annotation.gff3.gz", format = "gff3", organism = "Mus musculus")
+#mm_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/Gencodedat/gencode.vM20.annotation.gff3.gz", format = "gff3", organism = "Mus musculus")
 #But first! want to filter those gffs?
 filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
   gff <- rtracklayer::import(gff)
@@ -154,8 +154,8 @@ filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
   txdbGFF
   
 }
-mm_f_gff <- filter_Tx("data/gencode.vM20.annotation.gff3.gz")
-hs_f_gff <- filter_Tx("data/gencode.v33.annotation.gff3.gz")
+mm_f_gff <- filter_Tx("data/Gencodedat/gencode.vM20.annotation.gff3.gz")
+hs_f_gff <- filter_Tx("data/Gencodedat/gencode.v33.annotation.gff3.gz")
 ```
 
 ```{r, gettxfa}
@@ -277,36 +277,37 @@ make_longest_df <- function(TxDb_gff){
   
   longest_tx <- len_df %>% 
     group_by(gene_id) %>% 
-    summarize(tx_name = dplyr::first(tx_name), 
-              longest = max(tx_len)) %>% 
+    top_n(1, tx_len) %>% 
     dplyr::rename("whole" = "tx_name") %>% 
-    dplyr::select(-longest)
+    dplyr::select(gene_id, whole)
   
   longest_tx <- len_df %>% 
     group_by(gene_id) %>% 
-    summarize(tx_name = dplyr::first(tx_name), 
-              longest = max(cds_len)) %>% 
+    top_n(1, cds_len) %>% 
     dplyr::rename("CDS" = "tx_name") %>% 
-    dplyr::select(-longest) %>% 
-    left_join(longest_tx)
+    dplyr::select(gene_id, CDS) %>% 
+    left_join(., longest_tx)
   
   longest_tx <- len_df %>% 
     group_by(gene_id) %>% 
-    summarize(tx_name = dplyr::first(tx_name), 
-              longest = max(utr5_len)) %>% 
+    top_n(1, utr5_len) %>% 
     dplyr::rename("UTR5" = "tx_name") %>% 
-    dplyr::select(-longest) %>% 
-    left_join(longest_tx)
+    dplyr::select(gene_id, UTR5) %>% 
+    left_join(., longest_tx)
   
   longest_tx <- len_df %>%
     group_by(gene_id) %>% 
-    summarize(tx_name = dplyr::first(tx_name), 
-              longest = max(utr3_len)) %>% 
+    top_n(1, utr3_len) %>% 
     dplyr::rename("UTR3" = "tx_name") %>% 
-    dplyr::select(-longest) %>% 
-    left_join(longest_tx)
+    dplyr::select(gene_id, UTR3) %>% 
+    left_join(., longest_tx)
   
-  longest_tx
+  longest_tx <- longest_tx %>% 
+    group_by(gene_id) %>% 
+    summarize(whole = dplyr::first(whole), 
+              CDS = dplyr::first(CDS), 
+              UTR5 = dplyr::first(UTR5), 
+              UTR3 = dplyr::first(UTR3))
   
 }
 #longest_mm <- make_longest_df(mm_f_gff)
@@ -315,8 +316,9 @@ make_longest_df <- function(TxDb_gff){
 
 ```{r, gene2longesttx}
 #This takes a gene list and returns a list of transcripts with the longest feature of interest
+
 #hs_gene <- c("ENSG00000000419.12", "ENSG00000001167.14", "ENSG00000000938.13")
-#mm_gene <- 
+
 gene2longestTx <- function(longest_df, gene_list, seq_type){
    #Check that gene list contains genes
   
@@ -349,22 +351,7 @@ gene2longestTx <- function(longest_df, gene_list, seq_type){
   
 }
 #gene2longestTx(longest_hs, hs_gene, "UTR3")
+
 ```
 
-```{r, ZBP1dat}
-##just trying this out with some real data
-#FL_genes <- readRDS("data/ZBP1dat/FLlocgenes05.txt")
-#FL_ctrl_genes <- readRDS("data/ZBP1dat/FLctrlgenes.txt")
-#FL_ctrl_genes <- anti_join(FL_ctrl_genes, FL_genes)
-#FLvT_genes <- readRDS("data/ZBP1dat/FLvstrunclocgenes05")
-#FLvT_ctrl_genes <- readRDS("data/ZBP1dat/FLversustruncctrlgenes.txt")
-#FLvT_ctrl_genes <- anti_join(FLvT_ctrl_genes, FLvT_genes)
-#longest_3UTR_FL_Tx <- gene2longestTx(longest_mm, pull(FL_genes, ensembl_gene_id), "UTR3")
-#longest_3UTR_FL_ctrl_Tx <- gene2longestTx(longest_mm, pull(FL_ctrl_genes, ensembl_gene_id), "UTR3")
-#longest_3UTR_FLvT_Tx <- gene2longestTx(longest_mm, pull(FLvT_genes, ensembl_gene_id), "UTR3")
-#longest_3UTR_FLvT_ctrl_Tx <- gene2longestTx(longest_mm, pull(FLvT_ctrl_genes, ensembl_gene_id), "UTR3")
-#getTxOut(mm_f_gff, longest_3UTR_FL_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FL", "fa")
-#getTxOut(mm_f_gff, longest_3UTR_FL_ctrl_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FL_ctrl", "fa")
-#getTxOut(mm_f_gff, longest_3UTR_FLvT_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FLvT", "fa")
-#getTxOut(mm_f_gff, longest_3UTR_FLvT_ctrl_Tx, "UTR3", "data/ZBP1dat/longest_3UTR_FLvt_ctrl", "fa")
-```
+
