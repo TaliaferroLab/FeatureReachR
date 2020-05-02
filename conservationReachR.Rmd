@@ -1,0 +1,467 @@
+---
+title: "conservationReachR"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Libraries
+```{r}
+library(tidyverse)
+library(dplyr)
+library(biomaRt)
+#install.packages("bedr")
+#note that system dependencies are bedtools, bedops, and tabix
+library(bedr)
+devtools::install_github("collectivemedia/tictoc")
+library(tictoc)
+library(data.table)
+```
+```{r}
+plasma <- viridis::plasma(n = 6)
+viridis <- viridis::viridis(n = 6)
+cividis <- viridis::cividis(n=10)
+magma <- viridis::magma(n=6)
+```
+
+# Some Info and other resources
+```{}
+#the human hg38 phastcons = http://hgdownload.cse.ucsc.edu/goldenpath/hg38/phastCons100way/hg38.phastCons100way.bw
+
+#the mouse mm10 phastcons = http://hgdownload.cse.ucsc.edu/goldenpath/mm10/phastCons60way/mm10.60way.phastCons.bw
+#local file = ~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/mouse/mm10.60way.phastCons.bed.gz
+
+#https://gist.github.com/darencard/21860562a6edbc9fa12180f9df00381b
+```
+
+##Moving files around
+```{echo = FALSE}
+scp -r engelk@amc-bodhi.ucdenver.pvt:/beevol/home/taliaferro/data/RprojectDev/dummygffs/* /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData
+scp -r engelk@amc-bodhi.ucdenver.pvt:/beevol/home/taliaferro/data/RprojectDev/dummyfastas/* /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData
+scp -r engelk@amc-bodhi.ucdenver.pvt:/beevol/home/taliaferro/data/RprojectDev/conservation/mouse /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets
+
+
+gzip -cd mm10.60way.phastCons.bed.gz | head -20 > phastcons.subset.bed
+
+
+wig2bed < hg38.phastCons100way.bw > hg38.phastCons100way.bed
+
+
+scp -r engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/Annotations/mm10/gencodecomprehensive.mm10.longest3UTR.gff3 /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets
+scp -r engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/Annotations/mm10/gencodecomprehensive.mm10.longest5UTR.gff3 /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets
+scp -r engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/Annotations/mm10/gencodecomprehensive.mm10.longestCDS.gff3 /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets
+
+
+scp -r /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/All3UTR_new_exon.bed engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10
+scp -r /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/All5UTR_new_exon.bed engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10
+scp -r /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/AllCDS_new_exon.bed engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10
+
+scp -r engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/Annotations/mm10/mm10.60way.phastCons.bed.gz.tbi /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets
+
+```
+
+# Bedtools Intersect Locally was a Bust
+
+## First just get the intersection betweeen the phastcons file and the demo regions to write some R functions
+```{r, echo = F}
+#The demo .gff is not in the right format, need to switch some columns around, do this in R
+
+SD3deltaLRGenes <- read.table(file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData/SD3deltaLRGenes.longest3UTR.gff", sep =  "\t", stringsAsFactors = F, header = F)
+
+NoChngGenes <- read.table(file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData/UnchangeddeltaLRGenes.longest3UTR.gff", sep =  "\t", stringsAsFactors = F, header = F)
+
+SD3deltaLRGenes_new <- cbind.data.frame(chr = SD3deltaLRGenes[,1], start = SD3deltaLRGenes[,4], stop = SD3deltaLRGenes[,5], region = SD3deltaLRGenes[,3], parent_info = SD3deltaLRGenes[,9])
+
+#Then want only the 'exon' level lines, since the 3'UTR regions may contain introns, and they'll be redundant with the 'exon'. Note that the exon regions are the coordinates that only contain the 3'UTR, not the real exon intervals for those exons.
+
+SD3deltaLRGenes_new_exon <- SD3deltaLRGenes_new[grep("exon", SD3deltaLRGenes_new$region),]
+
+#write.table(SD3deltaLRGenes_new, file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData/SD3deltaLRGenes_new.bed", sep = "\t", quote = F, row.names = F, col.names = F)
+#write.table(SD3deltaLRGenes_new_exon, file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData/SD3deltaLRGenes_new_exon.bed", sep = "\t", quote = F, row.names = F, col.names = F)
+```
+
+## Then from the terminal on my computer...crashed
+```{r, echo = FALSE}
+#bedtools intersect -wo -a ~/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData/SD3deltaLRGenes_new.bed -b ~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/mouse_mm10/mm10.60way.phastCons.bed.gz > phastconsLRGenes.bed
+
+"Killed 9"
+```
+
+## So do it on bodhi instead...took 2 hours for ~80kbp
+```{r, echo = FALSE}
+#qlogin -R "rusage[mem=20]"
+#module load bedtools
+
+#scp ~/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData/SD3deltaLRGenes_new_exon.bed engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/RNAFeaturesPackage/DemoData
+
+########This turned out to take a super long time, just for one list. Kept it going anyway to see how big the file will end up being and see if it's workable in R. And to help figure out if the scoring the all 3'UTRs, 5'UTRs, and CDSs is doable in R. 
+#bedtools intersect -wo -a /beevol/home/taliaferro/data/RprojectDev/conservation/mouse/mm10.60way.phastCons.bed.gz -b /beevol/home/engelk/RNAFeaturesPackage/DemoData/SD3deltaLRGenes_new_exon.bed > /beevol/home/engelk/RNAFeaturesPackage/DemoData/phastconsLRGenes.bed
+
+#########pipe broke, but take a look at the output anyway. Very NEARLY finished and it took ~2 hours.
+#scp engelk@amc-bodhi.ucdenver.pvt:/beevol/home/engelk/RNAFeaturesPackage/DemoData/phastconsLRGenes.bed /Users/kengel/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData 
+```
+
+```{r, echo = FALSE}
+phastconsLRGenes <- read.table(file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DemoData/phastconsLRGenes.bed", sep = "\t", stringsAsFactors = F)
+
+phastconsLRGenes_clean <- cbind.data.frame(chr = phastconsLRGenes[,1], start = phastconsLRGenes[,2], stop = phastconsLRGenes[,3], phast_score = phastconsLRGenes[,5], parent = phastconsLRGenes[,10])
+
+```
+
+
+## It's possible that we decide to get phastcons for all longest 5'UTR, CDS, and 3'UTR
+```{r}
+#First need to edit the .gffs to be .bed format
+All5UTR <- read.table(file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/gencodecomprehensive.mm10.longest5UTR.gff3", sep =  "\t", stringsAsFactors = F, header = F)
+
+All3UTR <- read.table(file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/gencodecomprehensive.mm10.longest3UTR.gff3", sep =  "\t", stringsAsFactors = F, header = F)
+
+AllCDS <- read.table(file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/gencodecomprehensive.mm10.longestCDS.gff3", sep =  "\t", stringsAsFactors = F, header = F)
+
+All5UTR_new <- cbind.data.frame(chr = All5UTR[,1], start = All5UTR[,4], stop = All5UTR[,5], region = All5UTR[,3], parent_info = All5UTR[,9])
+
+All3UTR_new <- cbind.data.frame(chr = All3UTR[,1], start = All3UTR[,4], stop = All3UTR[,5], region = All3UTR[,3], parent_info = All3UTR[,9])
+
+AllCDS_new <- cbind.data.frame(chr = AllCDS[,1], start = AllCDS[,4], stop = AllCDS[,5], region = AllCDS[,3], parent_info = AllCDS[,9])
+
+#Then want only the 'exon' level
+All5UTR_new_exon <- All5UTR_new[grep("exon", All5UTR_new$region),]
+
+All3UTR_new_exon <- All3UTR_new[grep("exon", All3UTR_new$region),]
+
+AllCDS_new_exon <- AllCDS_new[grep("exon", AllCDS_new$region),]
+
+#write.table(All5UTR_new_exon, file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/All5UTR_new_exon.bed", sep = "\t", quote = F, row.names = F, col.names = F)
+
+#write.table(All3UTR_new_exon, file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/All3UTR_new_exon.bed", sep = "\t", quote = F, row.names = F, col.names = F)
+
+#write.table(AllCDS_new_exon, file = "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/AllCDS_new_exon.bed", sep = "\t", quote = F, row.names = F, col.names = F)
+```
+
+```{r, echo = FALSE}
+#Do this in an interactive session on bodhi
+
+########Get the phastcons scores for all bases in the longest 5'UTR of ALL genes
+#bedtools intersect -wo -a /beevol/home/taliaferro/data/RprojectDev/conservation/mouse/mm10.60way.phastCons.bed.gz -b /beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10/All5UTR_new_exon.bed > /beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10/phastcons5UTR.bed
+
+########Get the phastcons scores for all bases in the longest 3'UTR of ALL genes
+#bedtools intersect -wo -a /beevol/home/taliaferro/data/RprojectDev/conservation/mouse/mm10.60way.phastCons.bed.gz -b /beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10/All3UTR_new_exon.bed > /beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10/phastcons3UTR.bed
+
+########Get the phastcons scores for all bases in the longest CDS of ALL genes
+#bedtools intersect -wo -a /beevol/home/taliaferro/data/RprojectDev/conservation/mouse/mm10.60way.phastCons.bed.gz -b /beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10/AllCDS_new_exon.bed > /beevol/home/engelk/RNAFeaturesPackage/DataSets/mm10/phastconsCDS.bed
+```
+
+
+-------########## Here is were the real stuff starts
+
+# Tabix Index
+
+##Move to bodhi and create tabix of phastcons
+This will be extremely useful because the phastcons table is MASSIVE. Perhaps if we get it indexed, we can move to doing all of this in R.
+```{r}
+#conda create -n py36 python=3.6 anaconda
+#conda install tabix
+
+#screen -> qlogin -> source activate py36
+
+#This took about 30 minutes to index
+#tabix -p bed mm10.60way.phastCons.bed.gz
+```
+
+##Ok, so now how do I use the tabix indexed file??
+```{r}
+#https://www.rdocumentation.org/packages/bedr/versions/1.0.7/topics/tabix
+#https://www.rdocumentation.org/packages/bedr/versions/1.0.7/vignettes/Using-bedr.Rmd
+```
+
+### Test run on some random coordinates
+It looks like the the phastcons.bed.gz file is not actually complete? The file starts at chr1:3005431-3005432 Seems odd? But maybe the entire thing isn't scored?
+
+FREAKY FAST!!
+```{r}
+if (check.binary("tabix")) {
+query.regions <- c("chr1:58900449-58903503", "chr1:93015464-93018456")
+my.example <- "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/mouse_mm10/mm10.60way.phastCons.bed.gz"
+my.query <- tabix(query.regions, my.example, check.chr = TRUE)
+}
+class(query.regions)
+```
+
+### But now I need to convert my coordinates into a character vector.
+
+HOLY MOLY THAT TOOK SPLIT SECONDS! 0.699 sec 
+```{r}
+SD3deltaLRregion.char <- paste0(SD3deltaLRGenes_new_exon[, 1], ":", SD3deltaLRGenes_new_exon[, 2], "-", SD3deltaLRGenes_new_exon[, 3])
+SD3deltaLRregion.char.srt <- bedr.sort.region(SD3deltaLRregion.char)
+
+phastcons <- "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/mouse_mm10/mm10.60way.phastCons.bed.gz"
+
+tic()
+SD3deltaLR.query <- tabix(SD3deltaLRregion.char.srt, phastcons, check.chr = TRUE)
+toc()
+
+
+# wrap it in the function
+if (check.binary("tabix")) {
+SD3deltaLRregion.char <- paste0(SD3deltaLRGenes_new_exon[, 1], ":", SD3deltaLRGenes_new_exon[, 2], "-", SD3deltaLRGenes_new_exon[, 3])
+SD3deltaLRregion.char.srt <- bedr.sort.region(SD3deltaLRregion.char)
+phastcons <- "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/mouse_mm10/mm10.60way.phastCons.bed.gz"
+SD3deltaLR.query <- tabix(SD3deltaLRregion.char.srt, phastcons, check.chr = TRUE)
+}
+```
+
+
+# The Real Functions to Use
+
+## So now let's write a function to turn a .bed into the sorted character vector I need, wrap that function inside of the other one to return the query
+```{r}
+GFF2phastcons <- function(GFF) {
+  query.regionsAsBed <- cbind.data.frame(chr = GFF[,1], start = GFF[,4], 
+                                         stop = GFF[,5], region = GFF[,3], parent_info = GFF[,9])
+  query.regionsExons <- query.regionsAsBed[grep("exon", query.regionsAsBed$region),]
+  query.regions <- paste0(query.regionsExons[, 1], ":", query.regionsExons[, 2], "-", query.regionsExons[, 3])
+  
+  # Need to check if these are sorted and put an if then statement in to do something about it
+  query.regions <- bedr.sort.region(query.regions)
+  query.regions <- bedr.merge.region(query.regions)
+  
+  if (any(grepl("ENSG", GFF[,9])) == TRUE) {
+    print("This is human, yeah?")
+    phastcons <- "DUMMY HOLDER"
+  } 
+  
+  if (any(grepl("ENSMUSG", GFF[,9])) == TRUE) {
+    print("This is mouse, right?")
+    phastcons <- "~/Documents/Taliaferro_Lab/RNAFeaturePackage/DataSets/mouse_mm10/mm10.60way.phastCons.bed.gz"
+  } 
+  
+  else {
+  stop(print("Doesn't look like you have human or mouse data, check your GFF3? Otherwise your species of interest may not be supported"))
+  }
+  
+  my.query <- tabix(query.regions, phastcons, check.chr = TRUE)
+  colnames(my.query) <- c("chr", "start", "stop", "phastcons.id", "phastcons.score")
+  my.query
+}
+```
+
+```{r}
+# Run the funciton on the LRdelta and Unchanged GFF files
+# tic() LRphastcons <- GFF2phastcons(SD3deltaLRGenes) toc() # took 0.7 sec
+# tic() UnChngPhastcons <- GFF2phastcons(NoChngGenes) toc() # took 206 sec == ~3.5 mins
+```
+
+## Re-intersect that phastcons file with the original GFF3
+Use data.table and foverlaps()
+This is a way to do it inside R and should be pretty fast
+```{r}
+# https://stackoverflow.com/questions/27574775/find-the-intersection-of-overlapping-ranges-in-two-tables-using-data-table-funct
+intersectBedFiles.foverlaps <- function(bed1,bed2) {
+  require(data.table)
+  
+  bed1 <- data.table(bed1)
+  
+  bedkey <- c("chr","start","stop")
+  setkeyv(bed1, bedkey)
+  setkeyv(bed2, bedkey)
+  
+  if(nrow(bed1)>nrow(bed2)) {
+    bed <- foverlaps(bed1, bed2, nomatch = 0)
+  } 
+  
+  else {
+    bed <- foverlaps(bed2, bed1, nomatch = 0)
+  }
+  
+  return(bed)
+}
+```
+
+
+## Combine the foverlaps() and tabix() functions
+```{r}
+GetAnnotatedPhastcons <- function(GFF) {
+  
+  my.query <- GFF2phastcons(GFF)
+  
+  query.regionsAsBed <- cbind.data.frame(chr = GFF[,1], start = GFF[,4], stop = GFF[,5], region = GFF[,3], parent_info = GFF[,9])
+  
+  query.regionsAsBed.ex <- query.regionsAsBed[grep("exon", query.regionsAsBed$region),]
+  
+  query.bed <- data.table(query.regionsAsBed.ex)
+  
+  return(intersectBedFiles.foverlaps(my.query, query.bed))
+
+}
+```
+```{r}
+tic() 
+LRphastcons.final <- GetAnnotatedPhastcons(SD3deltaLRGenes) 
+toc() #took 1.5 sec 
+
+#tic() UnchangedPhastcons.final <- GetAnnotatedPhastcons(NoChngGenes) toc() #took 231.6 sec == 3.86 min
+```
+
+## A function to get the ENSG IDs
+```{r}
+#https://chemicalstatistician.wordpress.com/2015/06/18/how-to-extract-a-string-between-2-characters-in-r-and-sas/
+
+getstr <- function(mystring, initial.character, final.character) {
+ 
+     # check that all 3 inputs are character variables
+     if (!is.character(mystring)) {
+          stop('The parent string must be a character variable.')
+     }
+ 
+     if (!is.character(initial.character)) {
+          stop('The initial character must be a character variable.')
+     }
+ 
+ 
+     if (!is.character(final.character))
+     {
+          stop('The final character must be a character variable.')
+     }
+
+ 
+     # pre-allocate a vector to store the extracted strings
+     snippet = rep(0, length(mystring))
+ 
+ 
+     for (i in 1:length(mystring)) {
+          # extract the initial position
+          initial.position = gregexpr(initial.character, mystring[i])[[1]][1] + 1
+  
+          # extract the final position
+          final.position = gregexpr(final.character, mystring[i])[[1]][1] - 1
+ 
+          # extract the substring between the initial and final positions, inclusively
+          snippet[i] = substr(mystring[i], initial.position, final.position)
+     }
+ 
+     return(snippet)
+}
+```
+
+## Let's write a sub function to get the average phastcons score for an entire feature
+```{r}
+GetFeatureAverage <- function(phast.scores) {
+  
+  gene.ids <- getstr(as.character(phast.scores$parent_info), ':', '.utr')
+  phast.withgene <- cbind.data.frame(phast.scores, gene.ids)
+  
+  print(paste0("Calculating the average phastcon score for ", length(unique(phast.withgene$gene.ids)), " UTRs."))
+  
+  df <- data.frame( ensembl_id=rep(0, length(unique(gene.ids))), avg.phastcon=rep(0,length(unique(gene.ids))))
+  i <- 0
+  for (gene in unique(gene.ids)) {
+    #print(gene)
+    i <- i + 1
+    current.gene.df <- phast.withgene[grep(gene, phast.withgene$gene.ids),]
+    current.gene.avg <- mean(as.numeric(current.gene.df$phastcons.score))
+    #print(paste0("average phastcon score for: ", gene, " = ", current.gene.avg))    
+    df[i, ] <- c(gene, current.gene.avg)
+  }
+ df 
+}
+```
+
+## Write a function to get the average phastcons scores across UTRs
+```{r}
+GetPhastconsAverages <- function(phast.scores, 
+                                 method = "feature", 
+                                 interval = 4) {
+  
+  method_options = c("feature", "bin", "sliding_window")
+  '%ni%' <- Negate('%in%')
+  
+  if (method %ni% method_options){
+    stop(print("Error: method not recognized"))
+  }
+  
+  if (method == "feature") {
+    print("Calculating the average Phastcons score across each UTR.")
+    avg.table <- GetFeatureAverage(phast.scores)
+    return(avg.table)
+  } 
+  
+  if (method == "bin") {
+    print(paste0("Calculating the average Phastcons score across ", interval, " bins ", "for each UTR"))
+  }
+
+  if (method == "sliding_window") {
+    print(paste0("Calculating the average Phastcons score across sliding windows with a width of ", interval, "bp for each UTR"))
+  }
+  
+}
+```
+```{r}
+#GetPhastconsAverages(LRphastcons.final, method = "sliding_window", interval = 100)
+tic()
+LRphastcons.avg <- GetPhastconsAverages(LRphastcons.final)
+toc()
+#tic() UnChngPhastcons.avg <- GetPhastconsAverages(UnchangedPhastcons.final) toc() #took 43940 sec, or 732 min, or 12 hour
+```
+```{r, echo=FALSE}
+boxplot(as.numeric(LRphastcons.avg$avg.phastcon))
+#boxplot(as.numeric(UnChngPhastcons.avg$avg.phastcon))
+#UnChngPhastcons.avg$info <- "unchanged"
+#LRphastcons.avg$info <- "changed"
+#all <- rbind(UnChngPhastcons.avg, LRphastcons.avg)
+#all_mm <- melt(all)
+#all_mm$avg.phastcon <- as.numeric(all_mm$avg.phastcon)
+#class(all_mm$info)
+
+#p.val <- t.test(as.numeric(LRphastcons.avg$avg.phastcon), as.numeric(UnChngPhastcons.avg$avg.phastcon))$p.value
+```
+```{r, echo = FALSE}
+#colors <- c(magma[2], cividis[7])
+#ggplot(all_mm, aes(info, avg.phastcon, color = info)) +
+#  geom_violin(lwd=0.9) +
+#  geom_boxplot(lwd=0.5, outlier.shape=NA, alpha = 0.2, width=0.2) +
+#  coord_cartesian(ylim = c(-3, 3)) +
+#  geom_jitter(position=position_jitter(width=0.2, height=0.2)) +
+#  theme_light() +
+#  scale_color_manual(values = colors) + 
+#  theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"), axis.text = element_text(size = 22), axis.title = element_text(size = 18, face = "bold"), axis.line = element_line(colour = "black")) +
+#  labs(x = "", y = "average UTR phastcon score)") +
+#  ggtitle("Average phastcons scores for UTRs") #+
+  #geom_text(label="n = 2409", x=1, y=2.2, size = 7, color = "black") +
+  #theme(legend.position = "none")
+```
+
+
+
+
+
+
+
+
+
+## Something funky about the UTR intervals in the NoChngGenes file that doesn't allow foverlaps() to work
+```{r, echo = FALSE}
+#UnCh.regionsAsBed <- cbind.data.frame(chr = NoChngGenes[,1], start = NoChngGenes[,4], stop = NoChngGenes[,5], region = NoChngGenes[,3], parent_info = NoChngGenes[,9])
+#UnCh.regionsAsBed.utr <- UnCh.regionsAsBed[grep("gene", UnCh.regionsAsBed$region),]
+#UnCh.utr.bed <- data.table(UnCh.regionsAsBed.ex)
+#UnCh.annot <- intersectBedFiles.foverlaps(UnChngPhastcons, UnCh.utr.bed)
+
+#Error in foverlaps(bed1, bed2, nomatch = 0) : 
+#  All entries in column start should be <= corresponding entries in column stop in data.table 'y'. 
+#3 stop("All entries in column ", yintervals[1L], " should be <= corresponding entries in column ", 
+#    yintervals[2L], " in data.table 'y'.") 
+#2 foverlaps(bed1, bed2, nomatch = 0) 
+#1 intersectBedFiles.foverlaps(UnChngPhastcons, UnCh.utr.bed) 
+
+#dif <- UnCh.utr.bed$stop - UnCh.utr.bed$start
+#boxplot(dif)
+#dif.df <- cbind.data.frame(UnCh.utr.bed, dif = dif)
+#head(dif)
+#tail(dif)
+```
+
+
+
+
+
