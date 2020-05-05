@@ -1,12 +1,23 @@
-Package: utrtools
+Package: RNAreachR
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Extract Enriched Biological Features From RNA-seq Data
 Version: 0.1.0
 Author: Who wrote it
 Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Description: RNAreachR helps you extract biologically relevant information from your RNA-seq data. 
+             Ideally the functions take two sets of genes as input, the experimental group and a control group. 
+             The functions return biological features enriched in the experiemental group compared to control.
 License: What license is it under?
+Depends:
+    R (),
+    bedtools (),
+    bedops (),
+    tabix ()
+Imports:
+    bedr, 
+    dplyr (),
+    GenomicRanges, 
+    IRanges
 Encoding: UTF-8
 LazyData: true
 Imports: 
