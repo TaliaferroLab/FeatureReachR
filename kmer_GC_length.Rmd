@@ -17,14 +17,14 @@ library(Biostrings)
 #FMR1_genes <- substr(names(MT_FMR1), 1, 18)
 #FMR1_genes_ctrl <- substr(names(MT_FMR1_ctrl), 1, 18)
            
-#FMR1_UTR3_tx <- gene2longestTx(longest_mm, FMR1_genes, "UTR3")
-#FMR1_UTR3_tx_ctrl <- gene2longestTx(longest_mm, FMR1_genes_ctrl, "UTR3")
+#FMR1_UTR3_tx <- gene2Tx(longest_mm, FMR1_genes, "UTR3") #1s
+#FMR1_UTR3_tx_ctrl <- gene2Tx(longest_mm, FMR1_genes_ctrl, "UTR3") #1s
 
-#getTxOut(mm_f_gff, FMR1_UTR3_tx, "UTR3", "data/FMR1dat/longest_3UTR_FMR1", "fa")
+#getTxOut(mm_f_gff, FMR1_UTR3_tx, "UTR3", "data/FMR1dat/longest_3UTR_FMR1", "fa") 
 #getTxOut(mm_f_gff, FMR1_UTR3_tx_ctrl, "UTR3", "data/FMR1dat/longest_3UTR_FMR1_ctrl", "fa")
 
-longest_3UTR_FMR1 <-readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1.fa")
-longest_3UTR_FMR1_ctrl <- readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1_ctrl.fa")
+longest_3UTR_FMR1 <-readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1.fa") #30s
+longest_3UTR_FMR1_ctrl <- readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1_ctrl.fa") #30s
   
 ```
 
@@ -35,14 +35,14 @@ longest_3UTR_FMR1_ctrl <- readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1_ctrl.
 kmer_by_gene <- function(DNAStringSet, k){
 
    print("counting kmers...", quote = FALSE)
-   kmer_counts <- oligonucleotideFrequency(DNAStringSet, width = k) %>% 
-     as_tibble() %>% 
-     mutate(gene = names(DNAStringSet)) %>% 
-     dplyr::select(gene, everything())
+   kmer_counts <- Biostrings::oligonucleotideFrequency(DNAStringSet, width = k) %>% 
+     dplyr::as_tibble() %>% 
+     dplyr::mutate(gene = names(DNAStringSet)) %>% 
+     dplyr::select(gene, dplyr::everything())
    
    print("counting complete.", quote= FALSE)
    
-   kmer_counts
+   return(kmer_counts)
 }
 
 
@@ -52,13 +52,19 @@ kmer_by_gene <- function(DNAStringSet, k){
 
 kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
     
-   if(any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
+   if (any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
      warning("some sequences in case set are also in the control set. This is not recommended.")
    }
   
    print("counting kmers...", quote = FALSE)
-   case_kmer <- oligonucleotideFrequency(caseDNAStringSet, width = k) %>% colSums() %>% data.frame(kmer = names(.), case = .) %>% as_tibble()
-   ctrl_kmer <- oligonucleotideFrequency(ctrlDNAStringSet, width = k) %>% colSums() %>% data.frame(kmer = names(.), ctrl = .) %>% as_tibble()
+   case_kmer <- Biostrings::oligonucleotideFrequency(caseDNAStringSet, width = k) %>% 
+     colSums() %>% 
+     data.frame(kmer = names(.), case = .) %>% 
+     dplyr::as_tibble()
+   ctrl_kmer <- Biostrings::oligonucleotideFrequency(ctrlDNAStringSet, width = k) %>% 
+     colSums() %>%
+     data.frame(kmer = names(.), ctrl = .) %>% 
+     dplyr::as_tibble()
    print("counting complete.", quote= FALSE)
 
   #compare kmers between case and ctrl takes ~30s
@@ -70,24 +76,27 @@ kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
     
   print("calculating kmer statistics...", print = FALSE)
   
-  kmer_stats <- left_join(ctrl_kmer, case_kmer) %>% 
+  kmer_stats <- dplyr::left_join(ctrl_kmer, case_kmer) %>% 
     na.omit() %>% 
-    mutate(ctrl_freq = ctrl / sum(ctrl),
+    dplyr::mutate(ctrl_freq = ctrl / sum(ctrl),
            case_freq = case / sum(case),
            log2FC = log2(case_freq/ctrl_freq),
            ctrl_tot = sum(ctrl)-ctrl,
            case_tot = sum(case)-case) %>% 
-    rowwise() %>% 
-    mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+    dplyr::rowwise() %>% 
+   dplyr:: mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
            p_adj = p.adjust(pval, method = "BH", 4^k))
   
   print("calculations complete.", quote = FALSE)
   
-  kmer_stats
+  return(kmer_stats)
 }
 
 #kmer_by_gene(longest_3UTR_FMR1, 6)
-kmer_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl, 6)
+#FMR1_kmer <- kmer_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl, 6)
+#saveRDS(FMR1_kmer, "data/FMR1dat/kmer_FMR1_compare.txt")
+FMR1_kmer <- readRDS("data/FMR1dat/kmer_FMR1_compare.txt")
+FMR1_kmer %>% arrange(p_adj)
 
 ```
 
@@ -95,8 +104,8 @@ kmer_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl, 6)
 #this returns length of each sequence in a nice tibble
 
 get_length <- function(DNAStringSet){
-  as_tibble(data.frame(gene = names(DNAStringSet),
-             length = width(DNAStringSet)))
+  dplyr::as_tibble(data.frame(gene = names(DNAStringSet),
+                              length = Biostrings::width(DNAStringSet)))
 }
   
 
@@ -108,17 +117,17 @@ get_length <- function(DNAStringSet){
 
 length_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
   
-  if(any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
+  if (any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
      warning("some sequences in case set are also in the control set. This is not recommended.")
   }
   
-  wilcox.p <- wilcox.test(width(caseDNAStringSet), width(ctrlDNAStringSet))$p.value
-  mean_case <- mean(width(caseDNAStringSet))
-  mean_ctrl <- mean(width(ctrlDNAStringSet))
+  wilcox.p <- wilcox.test(Biostrings::width(caseDNAStringSet), Biostrings::width(ctrlDNAStringSet))$p.value
+  mean_case <- mean(Biostrings::width(caseDNAStringSet))
+  mean_ctrl <- mean(Biostrings::width(ctrlDNAStringSet))
   mean_FC <- mean_case/mean_ctrl
-  CliffDelta <- effsize::cliff.delta(width(caseDNAStringSet), width(ctrlDNAStringSet))$estimate
-  lowerCD <- effsize::cliff.delta(width(caseDNAStringSet), width(ctrlDNAStringSet))$conf.int[1]
-  upperCD <- effsize::cliff.delta(width(caseDNAStringSet), width(ctrlDNAStringSet))$conf.int[2]
+  CliffDelta <- effsize::cliff.delta(Biostrings::width(caseDNAStringSet), Biostrings::width(ctrlDNAStringSet))$estimate
+  lowerCD <- effsize::cliff.delta(Biostrings::width(caseDNAStringSet), Biostrings::width(ctrlDNAStringSet))$conf.int[1]
+  upperCD <- effsize::cliff.delta(Biostrings::width(caseDNAStringSet), Biostrings::width(ctrlDNAStringSet))$conf.int[2]
   
   data.frame(wilcox.p, mean_case, mean_ctrl, mean_FC, CliffDelta, lowerCD, upperCD)
   
@@ -129,25 +138,25 @@ length_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 
 ```
 
-```{r, GC}
+```{r, GC functions}
 #this returns GC of each sequence in a nice tibble
 
 get_GC <- function(DNAStringSet){
-  as_tibble(data.frame(gene = names(DNAStringSet),
-                       GC = as.integer(letterFrequency(DNAStringSet, "GC")),
-                       length = width(DNAStringSet)))
+  dplyr::as_tibble(data.frame(gene = names(DNAStringSet),
+                       GC = as.integer(Biostrings::letterFrequency(DNAStringSet, "GC")),
+                       length = Biostrings::width(DNAStringSet)))
 }
 
 #This is similar to the last function but with GC content. I again am uncertain of the output.
 
 GC_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
   
-  if(any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
+  if (any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
   warning("some sequences in case set are also in the control set. This is not recommended.")
   }
   
-  GC_case <- letterFrequency(caseDNAStringSet, "GC") / width(caseDNAStringSet)
-  GC_ctrl <- letterFrequency(ctrlDNAStringSet, "GC") / width(ctrlDNAStringSet)
+  GC_case <- Biostrings::letterFrequency(caseDNAStringSet, "GC") / Biostrings::width(caseDNAStringSet)
+  GC_ctrl <- Biostrings::letterFrequency(ctrlDNAStringSet, "GC") / Biostrings::width(ctrlDNAStringSet)
   wilcox.p <- wilcox.test(GC_case, GC_ctrl)$p.value
   mean_case <- mean(GC_case)
   mean_ctrl <- mean(GC_ctrl)
@@ -164,43 +173,53 @@ GC_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 
 ```
 
-```{r, pmws}
+```{r, cisbpRNA functions}
 #This function simply returns every motif counts for each gene
 #begin with folder containing PWM for motifs of intrest (downloaded from CisBPRNA called "pwms_all_motifs")
 #also need RBP info for the motifs (dowloaded from CisBPRNA called "RBP_Information_all_motifs")
 cisBPRNA_by_gene <- function(motif_path, RBPinfo, DNAStringset){
   
   #get paths to each motif pwm
+  print("getting Motif and RBP data...", quote = FALSE)
   
   motif_paths <- list.files(path = motif_path, full.names = TRUE)
   motif_info <- file.info(motif_paths)
   motif_info <- motif_info[motif_info$size != 0, ]
   motifs <- motif_info %>% 
-    as_tibble(rownames = "PATH") %>% 
-    mutate(motif = str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
+    dplyr::as_tibble(rownames = "PATH") %>% 
+    dplyr::mutate(motif = stringr::str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
     dplyr::select(PATH, motif)
 
   #merge motif paths with RBP info
   
   RBP_info <- read.table(RBPinfo, header = TRUE, sep = "\t")
   RBP_info <- RBP_info %>% 
-    as_tibble() %>% 
+    dplyr::as_tibble() %>% 
     dplyr::select(Motif_ID, RBP_Name) %>% 
-    filter(Motif_ID != ".") %>% 
-    group_by(Motif_ID) %>%
-    summarise(RBP_name = dplyr::first(RBP_Name))
+    dplyr::filter(Motif_ID != ".") %>% 
+    dplyr::group_by(Motif_ID) %>%
+    dplyr::summarise(RBP_name = dplyr::first(RBP_Name))
 
-  motifs <- left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
-
+  motifs <- dplyr::left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
+  
+  print("Getting PWM data", quote = FALSE)
+  
   motifs <- motifs %>%
-    mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))))
+    dplyr::mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))))
   
-  counts_list <- lapply(motifs$PWM, function(x) lapply(DNAStringset, function(y) countPWM(x, y)) %>% unlist() %>% as_tibble(rownames = "gene"))
+  print("Counting motif occurances...", quote = FALSE)
+  
+  counts_list <- lapply(motifs$PWM, function(x) lapply(DNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% dplyr::as_tibble(rownames = "gene"))
   names(counts_list) <- motifs$motif
-              
-  motif_by_gene <- bind_rows(counts_list, .id = "motif") %>% spread(gene, value = value) %>% left_join(., RBP_info, by = c("motif" = "Motif_ID")) %>% dplyr::select(motif, RBP_name, everything())            
   
-  motif_by_gene
+  print("Counting motif occurances complete.", quote = FALSE)
+  
+  motif_by_gene <- dplyr::bind_rows(counts_list, .id = "motif") %>% 
+    dplyr::spread(gene, value = value) %>% 
+    dplyr::left_join(., RBP_info, by = c("motif" = "Motif_ID")) %>% 
+    dplyr::select(motif, RBP_name, dplyr::everything())            
+  
+  return(motif_by_gene)
 }
 
 
@@ -212,45 +231,50 @@ cisBPRNA_compare <- function(motif_path, RBPinfo, caseDNAStringset, ctrlDNAStrin
   
   #get paths to each motif pwm
   
+  print("getting Motif and RBP data...", quote = FALSE)
+  
   motif_paths <- list.files(path = motif_path, full.names = TRUE)
   motif_info <- file.info(motif_paths)
   motif_info <- motif_info[motif_info$size != 0, ]
   motifs <- motif_info %>% 
-    as_tibble(rownames = "PATH") %>% 
-    mutate(motif = str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
+    dplyr::as_tibble(rownames = "PATH") %>% 
+    dplyr::mutate(motif = stringr::str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
     dplyr::select(PATH, motif)
 
   #merge motif paths with RBP info
   
   RBP_info <- read.table(RBPinfo, header = TRUE, sep = "\t")
   RBP_info <- RBP_info %>% 
-    as_tibble() %>% 
+    dplyr::as_tibble() %>% 
     dplyr::select(Motif_ID, RBP_Name) %>% 
-    filter(Motif_ID != ".") %>% 
-    group_by(Motif_ID) %>%
-    summarise(RBP_name = dplyr::first(RBP_Name))
+    dplyr::filter(Motif_ID != ".") %>% 
+    dplyr::group_by(Motif_ID) %>%
+    dplyr::summarise(RBP_name = dplyr::first(RBP_Name))
 
-  motifs <- left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
+  motifs <- dplyr::left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
 
   fisher <- function(a, b, c, d){
   mat <- matrix(c(a, b, c, d), nr = 2)
   fisher.test(mat, alternative = "two.sided")$p.value
   }
-
+  
+  print("Counting motif occurances and calculating statistics...", quote = FALSE)
+  
   motifs <- motifs %>%
     mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))), 
-           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
-           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
-           case_freq = case / sum(width(caseDNAStringset)), 
-           ctrl_freq = ctrl / sum(width(ctrlDNAStringSet)), 
+           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
+           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
+           case_freq = case / sum(Biostrings::width(caseDNAStringset)), 
+           ctrl_freq = ctrl / sum(Biostrings::width(ctrlDNAStringSet)), 
            log2FC = log2(case_freq/ctrl_freq),
            case_tot = sum(case)-case,
            ctrl_tot = sum(ctrl)-ctrl) %>% 
-    rowwise() %>% 
-    mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+    dplyr::rowwise() %>% 
+    dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
              p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
     dplyr::select(RBP_name, motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj)
 
+  return(motifs)
 }
 
 #cisBPRNA_by_gene("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1)
@@ -258,7 +282,412 @@ cisBPRNA_compare <- function(motif_path, RBPinfo, caseDNAStringset, ctrlDNAStrin
 #FMR1_motif <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 #saveRDS(FMR1_motif, "data/FMR1dat/cisbpMotif_FMR1_compare.txt")
 FMR1_motif <- readRDS("data/FMR1dat/cisbpMotif_FMR1_compare.txt")
-FMR1_motif
+FMR1_motif %>% arrange(p_adj)
 
 ```
+
+```{r, RBNS functions}
+#This function simply returns every motif counts for each gene
+#begin with folder containing PWM for motifs of intrest (from D.Dominguez called "RBNS_PWMs")
+
+RBNS_by_gene <- function(motif_path, DNAStringset){
+  
+  #get paths to each motif pwm
+  
+  print("getting Motif and RBP data...", quote = FALSE)
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(path = motif_paths)
+  motifs <- motif_info %>% 
+    dplyr::as_tibble(rownames = "PATH") %>% 
+    dplyr::mutate(motif = stringr::str_match(PATH, "PWMs/(.*?).PWM")[,2]) %>% 
+    dplyr::select(PATH, motif)
+  
+  print("Getting PWM data", quote = FALSE)
+
+  motifs <- motifs %>%
+    dplyr::mutate(PWM = lapply(PATH, function(x) t(read.table(x, skip = 1, row.names = 1, header = TRUE, col.names = c("pos","A", "C", "G", "T")))))
+  
+  print("Counting motif occurances...", quote = FALSE)
+
+  counts_list <- lapply(motifs$PWM, function(x) lapply(DNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% dplyr::as_tibble(rownames = "gene"))
+  names(counts_list) <- motifs$motif
+  
+  print("Counting motif occurance complete.", quote = FALSE)
+            
+  motif_by_gene <- dplyr::bind_rows(counts_list, .id = "motif") %>% dplyr::spread(gene, value = value) 
+  
+  return(motif_by_gene)
+}
+
+
+#This function compare the freqency of motifs in a case and control DNAStringSet
+#begin with folder containing PWM for motifs of intrest (from D.Dominguez called "RBNS_PWMs")
+
+RBNS_compare <- function(motif_path, caseDNAStringset, ctrlDNAStringSet){
+  
+  #get paths to each motif pwm
+  
+  print("getting Motif and RBP data...", quote = FALSE)
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(path = motif_paths)
+  motifs <- motif_info %>% 
+    dplyr::as_tibble(rownames = "PATH") %>% 
+    dplyr::mutate(motif = stringr::str_match(PATH, "PWMs/(.*?).PWM")[,2]) %>% 
+    dplyr::select(PATH, motif)
+
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  }
+
+  print("Counting motif occurances and calculating statistics...", quote = FALSE)
+
+  
+  motifs <- motifs %>%
+    mutate(PWM = lapply(PATH, function(x) t(read.table(x, skip = 1, row.names = 1, header = TRUE, col.names = c("pos","A", "C", "G", "T")))),
+           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
+           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
+           case_freq = case / sum(Biostrings::width(caseDNAStringset)), 
+           ctrl_freq = ctrl / sum(Biostrings::width(ctrlDNAStringSet)), 
+           log2FC = log2(case_freq/ctrl_freq),
+           case_tot = sum(case)-case,
+           ctrl_tot = sum(ctrl)-ctrl) %>% 
+    dplyr::rowwise() %>% 
+    dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+             p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
+    dplyr::select(motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj)
+
+  return(motifs)
+  
+}
+
+
+
+#RBNS_by_gene("data/RBNSdat/RBNS_PWMs", longest_3UTR_FMR1)
+
+#FMR1_RBNS <- RBNS_compare("data/RBNSdat/RBNS_PWMs", longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
+#saveRDS(FMR1_RBNS, "data/FMR1dat/RBNSMotif_FMR1_compare.txt")
+
+FMR1_RBNS %>% arrange(p_adj)
+
+```
+
+```{r, Relate K and PWMs}
+##This function will create the logical matrix needed to estimate RBP motif occurance from kmers
+##We will supply 4-7 mers related to both CisBPRNA and RBNS motifs
+##These should be used unless a k outside that range is desired
+##This will create logical matrices for those odd cases.
+
+relate_Kmer_RBNS <- function(k, motif_path){
+
+    ##make DNAStringSets for every kmer
+  x <- c("T", "A", "C", "G")
+  
+  kmers <- do.call(expand.grid, rep(list(x), k)) %>% 
+    dplyr::unite(kmer, sep = "") %>% 
+    dplyr::pull(., kmer) %>% 
+    Biostrings::DNAStringSet()
+  
+  names(kmers) <- do.call(expand.grid, rep(list(x), k)) %>% 
+    dplyr::unite(kmer, sep = "") %>% 
+    dplyr::pull(., kmer)
+
+  #get paths to each motif pwm
+  print("getting Motif and RBP data...", quote = FALSE)
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(path = motif_paths)
+  motifs <- motif_info %>% 
+    dplyr::as_tibble(rownames = "PATH") %>% 
+    dplyr::mutate(motif = stringr::str_match(PATH, "PWMs/(.*?).PWM")[,2]) %>% 
+    dplyr::select(PATH, motif)
+  
+  print("Getting PWM data", quote = FALSE)
+  
+  motifs <- motifs %>%
+    mutate(PWM = lapply(PATH, function(x) t(read.table(x, skip = 1, row.names = 1, header = TRUE, col.names = c("pos","A", "C", "G", "T")))))
+  
+  
+  PWM_list <- motifs$PWM
+  names(PWM_list) <- motifs$motif
+  
+  #this function makes every PWM the same length as k or shorter by tiling across longer PWM matrices
+  mattiles <- function(Mat, k) {
+    
+    if(ncol(Mat[[1]]) > k){  
+      x <- c(1:(ncol(Mat[[1]])-(k-1)))-1
+      list <- lapply(x, function(x) Mat[[1]][,(1+x):(k+x)])
+      names(list) <- lapply(x, function(x) paste(names(Mat), "_", x + 1, sep = ""))
+      list
+    }
+    else
+      Mat
+  }
+  
+  x <- 1:length(PWM_list)
+  tiled_motifs <- unlist(lapply(x, function(x) mattiles(PWM_list[x], k)), recursive = FALSE)
+  
+  
+  print("Counting motif occurances...", quote = FALSE)
+  
+  counts_list <- lapply(tiled_motifs, function(x) 
+    lapply(kmers, function(y) 
+      Biostrings::countPWM(x, y)) %>% unlist() %>% dplyr::as_tibble(rownames = "kmer"))
+  
+  print("Counting motif occurances complete.", quote = FALSE)
+  
+  motif_by_kmer <- dplyr::bind_rows(counts_list, .id = "motif") %>% 
+    dplyr::spread(kmer, value = value) %>% 
+    dplyr::select(motif, dplyr::everything())            
+  
+  motif_by_kmer <- motif_by_kmer %>% dplyr::as_tibble((. > 0) + 0) %>% dplyr::mutate(motif = .$motif)
+
+}
+
+relate_Kmer_CisBPRNA <- function(k, motif_path, RBPinfo){
+
+    ##make DNAStringSets for every kmer
+  x <- c("T", "A", "C", "G")
+  
+  kmers <- do.call(expand.grid, rep(list(x), k)) %>% 
+    dplyr::unite(kmer, sep = "") %>% 
+    dplyr::pull(., kmer) %>% 
+    Biostrings::DNAStringSet()
+  
+  names(kmers) <- do.call(expand.grid, rep(list(x), k)) %>% 
+    dplyr::unite(kmer, sep = "") %>% 
+    dplyr::pull(., kmer)
+
+  #get paths to each motif pwm
+  print("getting Motif and RBP data...", quote = FALSE)
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(motif_paths)
+  motif_info <- motif_info[motif_info$size != 0, ]
+  motifs <- motif_info %>% 
+    dplyr::as_tibble(rownames = "PATH") %>% 
+   dplyr:: mutate(motif = stringr::str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
+    dplyr::select(PATH, motif)
+
+  #merge motif paths with RBP info
+  
+  RBP_info <- read.table(RBPinfo, header = TRUE, sep = "\t")
+  RBP_info <- RBP_info %>% 
+    dplyr::as_tibble() %>% 
+    dplyr::select(Motif_ID, RBP_Name) %>% 
+    dplyr::filter(Motif_ID != ".") %>% 
+    dplyr::group_by(Motif_ID) %>%
+    dplyr::summarise(RBP_name = dplyr::first(RBP_Name))
+
+  motifs <- dplyr::left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
+  
+  print("Getting PWM data", quote = FALSE)
+  
+  motifs <- motifs %>%
+    dplyr::mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))))
+  
+  
+  PWM_list <- motifs$PWM
+  names(PWM_list) <- paste(motifs$RBP_name, "_", motifs$motif, sep = "")
+  
+  mattiles <- function(Mat, k) {
+    
+    if(ncol(Mat[[1]]) > k){  
+      x <- c(1:(ncol(Mat[[1]])-(k-1)))-1
+      list <- lapply(x, function(x) Mat[[1]][,(1+x):(k+x)])
+      names(list) <- lapply(x, function(x) paste(names(Mat), "_", x + 1, sep = ""))
+      list
+    }
+    else
+      Mat
+  }
+  
+  x <- 1:length(PWM_list)
+  tiled_motifs <- unlist(lapply(x, function(x) mattiles(PWM_list[x], k)), recursive = FALSE)
+  
+  
+  print("Counting motif occurances...", quote = FALSE)
+  
+  counts_list <- lapply(tiled_motifs, function(x) 
+    lapply(kmers, function(y) 
+      Biostrings::countPWM(x, y)) %>% unlist() %>% dplyr::as_tibble(rownames = "kmer"))
+  
+  print("Counting motif occurances complete.", quote = FALSE)
+  
+  motif_by_kmer <- dplyr::bind_rows(counts_list, .id = "motif") %>% 
+    dplyr::spread(kmer, value = value) %>%
+    dplyr::select(motif, dplyr::everything())            
+  
+  motif_by_kmer <- motif_by_kmer %>% dplyr::as_tibble((. > 0) + 0) %>% dplyr::mutate(motif = .$motif)
+
+}
+
+#fourmer_cisbpRNA <- relate_Kmer_CisBPRNA(4, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #3min
+#fivemer_cisbpRNA <- relate_Kmer_CisBPRNA(5, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #10min
+#sixmer_cisbpRNA <- relate_Kmer_CisBPRNA(6, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #26min
+#sevenmer_cisbpRNA <- relate_Kmer_CisBPRNA(7, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #57min
+
+#fourmer_RBNS <- relate_Kmer_RBNS(4, "data/RBNSdat/RBNS_PWMs") #1min
+#fivemer_RBNS <- relate_Kmer_RBNS(5, "data/RBNSdat/RBNS_PWMs") #3min
+#sixmer_RBNS <- relate_Kmer_RBNS(6, "data/RBNSdat/RBNS_PWMs") #8min
+#sevenmer_RBNS <- relate_Kmer_RBNS(7, "data/RBNSdat/RBNS_PWMs") #28min
+
+#write.table(fourmer_cisbpRNA, file = "data/KmerMotifRelations/fourmer_cisbpRNA.txt")
+#write.table(fivemer_cisbpRNA, file = "data/KmerMotifRelations/fivemer_cisbpRNA.txt")
+#write.table(sixmer_cisbpRNA, file = "data/KmerMotifRelations/sixmer_cisbpRNA.txt")
+#write.table(sevenmer_cisbpRNA, file = "data/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+
+#write.table(fourmer_RBNS, file = "data/KmerMotifRelations/fourmer_RBNS.txt")
+#write.table(fivemer_RBNS, file = "data/KmerMotifRelations/fivemer_RBNS.txt")
+#write.table(sixmer_RBNS, file = "data/KmerMotifRelations/sixmer_RBNS.txt")
+#write.table(sevenmer_RBNS, file = "data/KmerMotifRelations/sevenmer_RBNS.txt")
+
+```
+
+```{r, kmer to RBP estimate}
+##this should be faster than the full motif search by quite a lot.
+
+
+estimate_Motif_from_Kmer <- function(enriched_kmers, motif_set){
+ 
+  if (length(unique(nchar(as.character(enriched_kmers)))) != 1){
+    warning("kmers in kmer list are not the same length using the shortest kmer as k")
+    k = min(unique(nchar(as.character(enriched_kmers))))
+  }
+  else
+    k = unique(nchar(as.character(enriched_kmers)))
+  
+  if (motif_set != "cisbpRNA" & motif_set != "RBNS"){
+    stop(paste("motif_set must be either \"cisbpRNA\" or \"RBNS\"", quote = FALSE))
+  }
+  
+  if (k == 4 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_cisbpRNA.txt")
+  }
+  else if (k == 4 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_RBNS.txt")
+  }
+  else if (k == 5 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_cisbpRNA.txt")
+  }
+  else if (k == 5 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_RBNS.txt")
+  }
+  else if (k == 6 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_cisbpRNA.txt")
+  }
+  else if (k == 6 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_RBNS.txt")
+  }
+  else if (k == 7 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+  }
+  else if (k == 7 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_RBNS.txt")
+  }
+
+  ##calculate probablility of matching...
+
+  motif_by_kmer %>% 
+    dplyr::as_tibble() %>% 
+   dplyr:: mutate(enriched = rowSums(dplyr::select(., enriched_kmers)), 
+           all = rowSums(dplyr::select(., -motif))) %>% 
+    dplyr::separate(motif, into = c("RBP", "motif", "logo", "tile"), sep = "_", fill = "right") %>% 
+    dplyr::group_by(RBP, motif, logo) %>% 
+    dplyr::summarize(enriched = sum(enriched), all = sum(all)) %>% 
+    dplyr::mutate(p_val = phyper(enriched-1, length(enriched_kmers), (4^k)-length(enriched_kmers), all, lower.tail = FALSE), 
+           p_adj = p.adjust(p_val, method = "BH", n = nrow(.)))  %>% 
+    dplyr::arrange(p_adj) %>% 
+    dplyr::unite(RBP, motif, logo, col = "motif", sep = "_")
+
+}
+
+FMR1_RBNS_estimate <- estimate_Motif_from_Kmer(pos_FMR1_kmer, "RBNS") #1sec
+FMR1_cisbpRNA_estimate <- estimate_Motif_from_Kmer(pos_FMR1_kmer, "cisbpRNA") #1sec
+
+```
+
+```{r, compare RBP}
+FMR1_RBNS_estimate <- FMR1_RBNS_estimate %>% arrange(p_adj) %>% mutate(est_rank = c(1:nrow(.)))
+FMR1_cisbpRNA_estimate <- FMR1_cisbpRNA_estimate %>% arrange(p_adj) %>% mutate(est_rank = c(1:nrow(.)))
+
+##compare to direct motif scanning output:
+
+##ranking by pvalue and log2FC (only for the motif scan)
+FMR1_RBNS_top <- FMR1_RBNS %>% ungroup() %>%  filter(log2FC > 0) %>% arrange(desc(log2FC), p_adj) %>% mutate(rank = c(1:nrow(.)))
+FMR1_RBNS_bottom <- FMR1_RBNS %>% ungroup() %>%  filter(log2FC < 0) %>% arrange(desc(log2FC), desc(p_adj)) %>% mutate(rank = c((nrow(FMR1_RBNS_top)+1):(nrow(.)+nrow(FMR1_RBNS_top))))
+FMR1_RBNS <- rbind(FMR1_RBNS_top, FMR1_RBNS_bottom)
+
+FMR1_motif_top <- FMR1_motif %>% ungroup() %>%  filter(log2FC > 0) %>% arrange(desc(log2FC), p_adj) %>% mutate(rank = c(1:nrow(.)))
+FMR1_motif_bottom <- FMR1_motif %>% ungroup() %>%  filter(log2FC < 0) %>% arrange(desc(log2FC), desc(p_adj)) %>% mutate(rank = c((nrow(FMR1_motif_top)+1):(nrow(.)+nrow(FMR1_motif_top))))
+FMR1_motif <- rbind(FMR1_motif_top, FMR1_motif_bottom)
+
+full_join(FMR1_RBNS, FMR1_RBNS_estimate, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+FMR1_cisbpRNA_estimate %>% separate(motif, into = c("RBP_name", "motif", "extra"), sep = "_") %>% unite(motif, extra, col = "motif") %>% full_join(., FMR1_motif, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+##directly comparing adjusted p values
+
+FMR1_cisbpRNA_estimate %>% separate(motif, into = c("RBP", "motif"), extra = "merge") %>% dplyr::select(RBP, motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., FMR1_motif) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+FMR1_RBNS_estimate %>% dplyr::select(motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., FMR1_RBNS) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+
+##phyper overlap
+est_hits <- FMR1_RBNS_estimate %>%  filter(p_adj < 0.05) %>% pull(., motif)
+length(est_hits)
+scan_hits <- FMR1_RBNS %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., motif)
+length(scan_hits)
+est_hits %in% scan_hits %>% sum()
+
+phyper(sum(est_hits %in% scan_hits)-1, length(scan_hits), nrow(FMR1_RBNS)-length(scan_hits), length(est_hits), lower.tail = FALSE)
+
+
+
+est_hits <- FMR1_cisbpRNA_estimate %>% separate(motif, into = c("RBP_name", "motif"), extra = "merge") %>% filter(p_adj < 0.05) %>% pull(., motif)
+length(est_hits)
+scan_hits <- FMR1_motif %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., motif)
+length(scan_hits)
+est_hits %in% scan_hits %>% sum()
+
+phyper(sum(est_hits %in% scan_hits-1), length(scan_hits), nrow(FMR1_motif)-length(scan_hits), length(est_hits), lower.tail = FALSE)
+
+
+```
+
+```{r, kmer to PWM}
+
+consensusMatrix(DNAStringSet(pos_FMR1_kmer), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+
+d  <- adist(as.character(pos_FMR1_kmer)) #this is Levenshtein distance 
+rownames(d) <- as.character(pos_FMR1_kmer)
+hc <- hclust(as.dist(d))
+plot(hc)
+rect.hclust(hc, k=3, border = "red")
+df <- data.frame(kmer = as.character(pos_FMR1_kmer),group = cutree(hc,k=3)) %>% as_tibble()
+
+
+consensusMatrix(DNAStringSet(pull(filter(df, group == 1), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+consensusMatrix(DNAStringSet(pull(filter(df, group == 2), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+consensusMatrix(DNAStringSet(pull(filter(df, group == 3), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+
+pairwiseAlignment(DNAStringSet(pull(filter(df, group == 1), kmer)), subject = as.character(pull(filter(df, group == 1), kmer))[1], type = "overlap") %>% Views() %>% consensusMatrix(as.prob = TRUE, shift = start(.)-1) %>% .[1:4,] %>% seqLogo::seqLogo()
+pairwiseAlignment(DNAStringSet(pull(filter(df, group == 2), kmer)), subject = as.character(pull(filter(df, group == 2), kmer))[1], type = "overlap") %>% Views() %>% consensusMatrix(as.prob = TRUE, shift = start(.)-1) %>% .[1:4,] %>% seqLogo::seqLogo()
+pairwiseAlignment(DNAStringSet(pull(filter(df, group == 3), kmer)), subject = as.character(pull(filter(df, group == 3), kmer))[1], type = "overlap") %>% Views() %>% consensusMatrix(as.prob = TRUE, shift = start(.)-1) %>% .[1:4,] %>% seqLogo::seqLogo()
+
+pairwiseAlignment(DNAStringSet(pull(filter(df, group == 2), kmer))[1], DNAStringSet(pull(filter(df, group == 2), kmer))[2], type = "overlap") %>% consensusMatrix(as.prob = TRUE) %>% .[1:4,2:6] %>% seqLogo::seqLogo()
+
+
+
+##cm is a consensus matrix from aligned() (with -)
+cm <- pairwiseAlignment(DNAStringSet(pull(filter(df, group == 3), kmer)), subject = as.character(pull(filter(df, group == 3), kmer))[1], type = "overlap") %>% aligned() %>% consensusMatrix()
+
+cm %>% t() %>%  as_tibble(rownames = "pos") %>% dplyr::select(pos, A, C, G, T, '-') %>% mutate(N = `-`, N = N/4) %>% dplyr::select(pos,A,C,G,T,N) %>% mutate(A = A+N, C = C+N, G = G+N, T = T+N ) %>% dplyr::select(-pos, -N) %>% mutate(rowsum = rowSums(dplyr::select(., A,C,G,T)), A = A/rowsum, C = C/rowsum, G = G/rowsum, T = T/rowsum) %>% dplyr::select(-rowsum) %>% t() %>% as.matrix() %>% seqLogo::seqLogo()
+
+```
+
+
+
 

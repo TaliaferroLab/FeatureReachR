@@ -44,8 +44,7 @@ GFF2df <- function(genomeGFF3, filter = TRUE, protein.coding = FALSE){
            exon_number = ifelse(grepl("exon_number=", attributes), str_match(attributes, "exon_number=(.*?);")[,2], "NA")) 
   
   ifelse(filter == TRUE,
-         gff_df <- gff_df %>% filter(transcript_support_level == "1" | transcript_support_level == "2" | transcript_support_level == "NA",
-                               !grepl("_NF", tag)), "")
+         gff_df <- gff_df %>% filter(transcript_support_level == "1" | transcript_support_level == "2" | transcript_support_level == "NA", !grepl("_NF", tag)), "")
   
   ifelse(protein.coding == TRUE,
          gff_df <- gff_df %>% filter(transcript_type == "protein_coding" | transcript_type == "NA"), "")
@@ -125,47 +124,118 @@ GFF2FA <- function(GFF_df, genome_DNAstringSet, fa_name){
 ##Back to writing functions with more packages
 
 
-```{r, }
-#hs_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/Gencodedat/gencode.v33.annotation.gff3.gz", format = "gff3", organism = "Homo sapiens")
-#seqlevelsStyle(hs_gff) <- "NCBI"
+```{r, filter gff}
+#filter_TX() filters out transcripts from gencode gff files
+#this is compatible with human and mouse gencode annotations
+#downloaded from https://www.gencodegenes.org/human/ or https://www.gencodegenes.org/mouse/
+#there are two filter options, a general filter and a protein coding filter.
+#The general filter removes any transcripts with undefined ends or with a support level higher than 2 (low confidence transcripts)
+#The protein coding filter removes all transcripts that lack a protein coding tag.
+#The default is to remove low confidence transcripts (general filter) but keep all transcripts regardless of protein coding status
+#the output from filter_Tx() is a TxDb object containing a gene model of the filtered transcripts
+#this Txdb object is required for downstream functions
+#if filtering is not desired, the below functions will create TxDb objects for human and mouse Gencode data
+#hs_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/Gencodedat/gencode.v33.annotation.gff3.gz", format = "gff3", organism = "Homo sapiens") # 11min 
+#GenomeInfoDb::seqlevelsStyle(hs_gff) <- "NCBI"
 #mm_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/Gencodedat/gencode.vM20.annotation.gff3.gz", format = "gff3", organism = "Mus musculus")
-#But first! want to filter those gffs?
+
 filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
   gff <- rtracklayer::import(gff)
-  if(filter == TRUE){
+  if (filter == TRUE){
+    print("filtering out low confidence transcripts...", quote = FALSE)
+    #remove low confidence transcripts
     gff <- gff[gff$transcript_support_level == "1" | gff$transcript_support_level == "2" | is.na(gff$transcript_support_level)]
+    #remove transcripts with undefined starts or ends
     NF <- c("cds_start_NF", "cds_end_NF", "mRNA_start_NF", "mRNA_end_NF")
     `%out%` = Negate(`%in%`)
     gff <- gff[all(gff$tag %out% NF)]
+    print("filtering complete.", quote = FALSE)
   }
-  if(protein.coding == TRUE){
+  
+  if (protein.coding == TRUE){
+    print("filtering out non-coding transcripts...", quote = FALSE)
+    #remove non-coding transcripts
     gff <- gff %>% gff[gff$transcript_type == "protein_coding"]
+    print("filtering complete.", quote = FALSE)
     }
   
- 
-  
-  if(all(grepl("ENSG", gff$gene_id))){
-    txdbGFF <- makeTxDbFromGRanges(gff)
-    seqlevelsStyle(txdbGFF) <- "NCBI"
-  } else if(all(grepl("ENSMUSG", gff$gene_id))){
-    txdbGFF <- makeTxDbFromGRanges(gff)
+  #create txdb gene model from filtered gff
+  if (all(grepl("ENSG", gff$gene_id))){
+    txdbGFF <- GenomicFeatures::makeTxDbFromGRanges(gff)
+    GenomeInfoDb::seqlevelsStyle(txdbGFF) <- "NCBI"
+  } else if (all(grepl("ENSMUSG", gff$gene_id))){
+    txdbGFF <- GenomicFeatures::makeTxDbFromGRanges(gff)
   }
   
-  txdbGFF
+  return(txdbGFF)
   
 }
-mm_f_gff <- filter_Tx("data/Gencodedat/gencode.vM20.annotation.gff3.gz")
-hs_f_gff <- filter_Tx("data/Gencodedat/gencode.v33.annotation.gff3.gz")
+
+mm_f_gff <- filter_Tx("data/Gencodedat/gencode.vM20.annotation.gff3.gz") #3.5 min
+hs_f_gff <- filter_Tx("data/Gencodedat/gencode.v33.annotation.gff3.gz") #1.5 min
+
+```
+
+```{r, RNA_type breakdown}
+#RNA_breakdown is a simple analysis that reveals the types of RNAs present in a transcript list
+#this can be used to better understand your case and control sets of transcripts
+#If you instead have sets of genes, we recommend using expression data to find expresed transcripts within your experiment
+#otherwise, use gene2tx() to create transcript sets from either make_longest_df or make_median_df
+
+RNA_breakdown <- function(gff, tx_list){
+  
+  print("Ensuring compatibility of GFF and transcript list...", quote = FALSE)
+  if (any(grepl("ENSG", tx_list)) | any(grepl("ENSMUSG", tx_list))){
+    stop("Please ensure the transcript list contains transcript IDs and not gene IDs.")
+  }
+  
+  ifelse(all(grepl("ENST", tx_list)), 
+         (list_species = "human"), 
+         ifelse(all(grepl("ENSMUST", tx_list)), 
+                (list_species = "mouse"), 
+                (list_species = "unknown")))
+  
+  gff <- rtracklayer::import(gff)
+  gff_species = "unknown"
+  if (all(grepl("ENSG", gff$gene_id))){
+    gff_species = "human"
+  } else if (all(grepl("ENSMUSG", gff$gene_id))){
+    gff_species = "mouse"
+  }
+  
+  if (list_species != gff_species){ 
+    stop("Please ensure the transcript list and gff are of the same species.")
+  }
+  print("GFF and transcript list are compatible.", quote = FALSE)
+  
+  print("Getting RNA type information...")
+  gff <- gff[gff$type == "transcript"]
+  gff <- gff[gff$transcript_id %in% tx_list]
+  
+  RNA_breakdown <- gff@elementMetadata %>% 
+    dplyr::as_tibble() %>% 
+    dplyr::group_by(transcript_type) %>% 
+    dplyr::summarize(percent = n() / nrow(.) * 100)
+  
+  return(RNA_breakdown)
+}
+
+RNA_breakdown("data/Gencodedat/gencode.vM20.annotation.gff3.gz", mm_tx)
+
 ```
 
 ```{r, gettxfa}
-##This function writes gff3 files or fasta files from genome gff3s subsetted with a transcript list
+##This function writes gff3 files or fasta files from genome TxDb object subsetted with a transcript list
+#sequences extracted can be entire transcripts (whole) or just the CDS, 3`UTR or 5`UTR sequences.
+#If you instead have sets of genes, we recommend using expression data to find expresed transcripts within your experiment to represent your genes of interest.
+#otherwise, use gene2tx() to create transcript sets from either make_longest_df or make_median_df
+
 getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   #Check that transcript list contains transcripts
   
   print("Ensuring compatibility of GFF and transcript list...", quote = FALSE)
   
-  if(any(grepl("ENSG", tx_list)) | any(grepl("ENSMUSG", tx_list))){
+  if (any(grepl("ENSG", tx_list)) | any(grepl("ENSMUSG", tx_list))){
          stop("Please ensure the transcript list contains transcript IDs and not gene IDs.")
   }
   
@@ -183,7 +253,7 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
                 (gff_species = "mouse"), 
                 (gff_species = "unknown")))
   
-  if(list_species != gff_species){ 
+  if (list_species != gff_species){ 
     stop("Please ensure the transcript list and gff are of the same species.")
   }
   
@@ -193,27 +263,27 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   
   tx_gff <- NULL
   
-  if(seq_type == "whole"){
+  if (seq_type == "whole"){
   print("filtering whole transcripts...", quote = FALSE)
-  tx_gff <- exonsBy(TxDb_gff, "tx", use.names = TRUE)
+  tx_gff <- GenomicFeatures::exonsBy(TxDb_gff, "tx", use.names = TRUE)
   tx_gff <- tx_gff[names(tx_gff) %in% tx_list]
   print("filtering complete.", quote = FALSE)
   
-  } else if(seq_type == "CDS"){
+  } else if (seq_type == "CDS"){
   print("filtering CDS...", quote = FALSE)
-  tx_gff <- cdsBy(TxDb_gff, "tx", use.names = TRUE)
+  tx_gff <- GenomicFeatures::cdsBy(TxDb_gff, "tx", use.names = TRUE)
   tx_gff <- tx_gff[names(tx_gff) %in% tx_list]
   print("filtering complete.", quote = FALSE)
   
-  } else if(seq_type == "UTR5"){
+  } else if (seq_type == "UTR5"){
   print("filtering 5' UTRs...", quote = FALSE)
-  tx_gff <- fiveUTRsByTranscript(TxDb_gff, use.names = TRUE)
+  tx_gff <- GenomicFeatures::fiveUTRsByTranscript(TxDb_gff, use.names = TRUE)
   tx_gff <- tx_gff[names(tx_gff) %in% tx_list]
   print("filtering complete.", quote = FALSE)
   
-  } else if(seq_type == "UTR3"){
+  } else if (seq_type == "UTR3"){
   print("filtering 3' UTRs...", quote = FALSE)
-  tx_gff <- threeUTRsByTranscript(TxDb_gff, use.names = TRUE)
+  tx_gff <- GenomicFeatures::threeUTRsByTranscript(TxDb_gff, use.names = TRUE)
   tx_gff <- tx_gff[names(tx_gff) %in% tx_list]
   print("filtering complete.", quote = FALSE)
   
@@ -225,13 +295,13 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   
   #Get the sequences from subset GFF
   
-  if(list_species == "human" & gff_species == "human"){  
+  if (list_species == "human" & gff_species == "human"){  
   print("extracting sequences...", quote = FALSE)
-  seq <- extractTranscriptSeqs(Hsapiens, tx_gff)
+  seq <- GenomicFeatures::extractTranscriptSeqs(BSgenome.Hsapiens.NCBI.GRCh38::Hsapiens, tx_gff)
   
-  } else if(list_species == "mouse" & gff_species == "mouse"){
+  } else if (list_species == "mouse" & gff_species == "mouse"){
   print("extracting sequences...", quote = FALSE)
-  seq <- extractTranscriptSeqs(Mmusculus, tx_gff)
+  seq <- GenomicFeatures::extractTranscriptSeqs(BSgenome.Mmusculus.UCSC.mm10::Mmusculus, tx_gff)
   
   } else
   stop("Please ensure the transcript list and gff are of the same species.")
@@ -242,115 +312,182 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   
   #output sequences in desired format
   
-  if(output_type == "fa"){
+  if (output_type == "fa"){
     print("writing fasta...", quote = FALSE)
-    writeXStringSet(seq, paste(file_name, ".fa", sep = ""), format = "fasta")
+    Biostrings::writeXStringSet(seq, paste(file_name, ".fa", sep = ""), format = "fasta")
     print("fasta writen.", quote = FALSE)
     
-    } else if(output_type == "gff3"){
-    prinnt("writing GFF3...", quote = FALSE)
-    export(tx_gff, paste(file_name, ".gff3", sep = ""), format = "GFF")
+    } else if (output_type == "gff3"){
+    print("writing GFF3...", quote = FALSE)
+    rtracklayer::export(tx_gff, paste(file_name, ".gff3", sep = ""), format = "GFF")
+    print("GFF3 written.", quote = FALSE)
+    
+    } else if (output_type == "both"){
+    print("writing fasta...", quote = FALSE)
+    Biostrings::writeXStringSet(seq, paste(file_name, ".fa", sep = ""), format = "fasta")
+    print("fasta writen.", quote = FALSE)
+    
+    print("writing GFF3...", quote = FALSE)
+    rtracklayer::export(tx_gff, paste(file_name, ".gff3", sep = ""), format = "GFF")
     print("GFF3 written.", quote = FALSE)
     
     } else
-    stop("not appropriate format, please use \"fa\" or \"gff3\"", quote = FALSE)
-  
-print(paste("Querried ", length(tx_gff), " of ", length(tx_list), " requested genes.", sep = ""), quote = FALSE)
-print(paste("Querried ", sum(width(seq))/1000, " KB of sequence.", sep = ""), quote = FALSE)
+    stop("not appropriate format, please use \"fa\", \"gff3\" or \"both\"", quote = FALSE)
+    
+
+  print(paste("Querried ", length(tx_gff), " of ", length(tx_list), " requested genes.", sep = ""), quote = FALSE)
+  print(paste("Querried ", sum(Biostrings::width(seq))/1000, " KB of sequence.", sep = ""), quote = FALSE)
 }
 #getTxOut(hs_gff, hs_tx, "CDS", "data/test", "fa")
 ```
 
 
 ```{r, longestDF}
-#This creates a dataframe of the transcripts with the longest features for each gene in a gff_df file
+#This creates a dataframe of the transcripts with the longest features for each gene in a TxDb object
 #this takes a minute or two so its better to run it once.
+
 make_longest_df <- function(TxDb_gff){ 
   #identify transcript with longest feature for each gene
   
-  len_df <- transcriptLengths(TxDb_gff, 
+  len_df <- GenomicFeatures::transcriptLengths(TxDb_gff, 
                               with.cds_len = TRUE, 
                               with.utr5_len = TRUE, 
                               with.utr3_len = TRUE) %>% 
-    as_tibble() %>% 
-    mutate(gene_id = sub("\\..*", "", gene_id))
+    dplyr::as_tibble() %>% 
+    dplyr::mutate(gene_id = sub("\\..*", "", gene_id))
   
   longest_tx <- len_df %>% 
-    group_by(gene_id) %>% 
-    top_n(1, tx_len) %>% 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::top_n(1, tx_len) %>% 
     dplyr::rename("whole" = "tx_name") %>% 
     dplyr::select(gene_id, whole)
   
   longest_tx <- len_df %>% 
-    group_by(gene_id) %>% 
-    top_n(1, cds_len) %>% 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::top_n(1, cds_len) %>% 
     dplyr::rename("CDS" = "tx_name") %>% 
     dplyr::select(gene_id, CDS) %>% 
-    left_join(., longest_tx)
+    dplyr::left_join(., longest_tx)
   
   longest_tx <- len_df %>% 
-    group_by(gene_id) %>% 
-    top_n(1, utr5_len) %>% 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::top_n(1, utr5_len) %>% 
     dplyr::rename("UTR5" = "tx_name") %>% 
     dplyr::select(gene_id, UTR5) %>% 
-    left_join(., longest_tx)
+    dplyr::left_join(., longest_tx)
   
   longest_tx <- len_df %>%
-    group_by(gene_id) %>% 
-    top_n(1, utr3_len) %>% 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::top_n(1, utr3_len) %>% 
     dplyr::rename("UTR3" = "tx_name") %>% 
     dplyr::select(gene_id, UTR3) %>% 
-    left_join(., longest_tx)
+    dplyr::left_join(., longest_tx)
   
   longest_tx <- longest_tx %>% 
-    group_by(gene_id) %>% 
-    summarize(whole = dplyr::first(whole), 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::summarize(whole = dplyr::first(whole), 
               CDS = dplyr::first(CDS), 
               UTR5 = dplyr::first(UTR5), 
               UTR3 = dplyr::first(UTR3))
   
 }
-#longest_mm <- make_longest_df(mm_f_gff)
-#longest_hs <- make_longest_df(hs_f_gff)
+#longest_mm <- make_longest_df(mm_f_gff) #18s
+#longest_hs <- make_longest_df(hs_f_gff) #5.5min
 ```
 
-```{r, gene2longesttx}
-#This takes a gene list and returns a list of transcripts with the longest feature of interest
+```{r, medianDF}
+#This creates a dataframe of the transcripts with the median length features for each gene in a TxDb object
+#this takes a minute or two so its better to run it once.
+make_median_df <- function(TxDb_gff){ 
+  #identify transcript with longest feature for each gene
+  
+  len_df <- GenomicFeatures::transcriptLengths(TxDb_gff, 
+                              with.cds_len = TRUE, 
+                              with.utr5_len = TRUE, 
+                              with.utr3_len = TRUE) %>% 
+    dplyr::as_tibble() %>% 
+    dplyr::mutate(gene_id = sub("\\..*", "", gene_id))
+  
+  #ignore isoforms with no feature when calculating median (many transcripts lack CDS, UTR3 and UTR5 features)
+  len_df[len_df == 0] <- NA
+  
+  median_tx <- len_df %>% 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::filter(abs(tx_len - median(tx_len, na.rm = TRUE)) == min(abs(tx_len - median(tx_len, na.rm = TRUE)), na.rm = TRUE)) %>% 
+    dplyr::rename("whole" = tx_name) %>% 
+    dplyr::select(gene_id, whole)
+  
+  median_tx <- len_df %>% 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::filter(abs(cds_len - median(cds_len, na.rm = TRUE)) == min(abs(cds_len - median(cds_len, na.rm = TRUE)), na.rm = TRUE)) %>% 
+    dplyr::rename("CDS" = tx_name) %>% 
+    dplyr::select(gene_id, CDS) %>% 
+    dplyr::left_join(., median_tx)
+    
+  median_tx <- len_df %>%
+    dplyr::group_by(gene_id) %>% 
+    dplyr::filter(abs(utr5_len - median(utr5_len, na.rm = TRUE)) == min(abs(utr5_len - median(utr5_len, na.rm = TRUE)), na.rm = TRUE)) %>% 
+    dplyr::rename("UTR5" = tx_name) %>% 
+    dplyr::select(gene_id, UTR5) %>% 
+    dplyr::left_join(., median_tx)
+  
+  median_tx <- len_df %>% 
+    dplyr::group_by(gene_id) %>% 
+    dplyr::filter(abs(utr3_len - median(utr3_len, na.rm = TRUE)) == min(abs(utr3_len - median(utr3_len, na.rm = TRUE)), na.rm = TRUE)) %>% 
+    dplyr::rename("UTR3" = tx_name) %>% 
+    dplyr::select(gene_id, UTR3) %>% 
+    dplyr::left_join(., median_tx)
+
+  
+  median_tx <- median_tx %>% 
+    dplyr::group_by(gene_id) %>% 
+   dplyr:: summarize(whole = dplyr::first(whole), 
+              CDS = dplyr::first(CDS), 
+              UTR5 = dplyr::first(UTR5), 
+              UTR3 = dplyr::first(UTR3))
+  
+}
+#median_mm <- make_median_df(mm_f_gff)
+#median_hs <- make_median_df(hs_f_gff)
+```
+
+```{r, gene2tx}
+#This takes a gene list and returns a list of transcripts with the longest or median length feature of interest
 
 #hs_gene <- c("ENSG00000000419.12", "ENSG00000001167.14", "ENSG00000000938.13")
 
-gene2longestTx <- function(longest_df, gene_list, seq_type){
+gene2Tx <- function(length_df, gene_list, seq_type){
    #Check that gene list contains genes
   
-  if(all(grepl("ENST", gene_list)) | all(grepl("ENSMUST", gene_list))){
+  if (all(grepl("ENST", gene_list)) | all(grepl("ENSMUST", gene_list))){
          stop("Please ensure the gene list contains gene IDs and not transcript IDs.") 
   }
   
   #Make sure gff and gene list are the same species
   
-  ifelse(all(grepl("ENSG", gene_list)), 
+  ifelse (all(grepl("ENSG", gene_list)), 
          (list_species = "human"), 
-         ifelse(all(grepl("ENSMUSG", gene_list)), 
+         ifelse (all(grepl("ENSMUSG", gene_list)), 
                 (list_species = "mouse"), 
                 (list_species = "unknown")))
   
-  ifelse(grepl("ENSG", longest_df$gene_id[1]), 
+  ifelse (grepl("ENSG", length_df$gene_id[1]), 
          (gff_species = "human"), 
-         ifelse(grepl("ENSMUSG", longest_df$gene_id[1]),
+         ifelse (grepl("ENSMUSG", length_df$gene_id[1]),
                 (gff_species = "mouse"), 
                 (gff_species = "unknown")))
   
-  if(list_species != gff_species){
+  if (list_species != gff_species){
     stop("Please ensure the gene list and gff are of the same species.")
   }
   
   #create longest transcript list from gene list
   
-  tx_list <- longest_df %>% filter(gene_id %in% gene_list) %>% pull(., seq_type)
-  tx_list
+  tx_list <- length_df %>% dplyr::filter(gene_id %in% gene_list) %>% dplyr::pull(., seq_type)
+  return(tx_list)
   
 }
-#gene2longestTx(longest_hs, hs_gene, "UTR3")
+#gene2Tx(longest_hs, hs_gene, "UTR3")
 
 ```
 

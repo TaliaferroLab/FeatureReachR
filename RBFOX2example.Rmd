@@ -1,0 +1,338 @@
+---
+title: "RBFOX2 kmer example"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(Biostrings)
+library(cowplot)
+
+```
+
+```{r, package fxs}
+
+kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
+    
+   if(any(names(caseDNAStringSet) %in% names(ctrlDNAStringSet))){
+     warning("some sequences in case set are also in the control set. This is not recommended.")
+   }
+  
+   print("counting kmers...", quote = FALSE)
+   case_kmer <- oligonucleotideFrequency(caseDNAStringSet, width = k) %>% colSums() %>% data.frame(kmer = names(.), case = .) %>% as_tibble()
+   ctrl_kmer <- oligonucleotideFrequency(ctrlDNAStringSet, width = k) %>% colSums() %>% data.frame(kmer = names(.), ctrl = .) %>% as_tibble()
+   print("counting complete.", quote= FALSE)
+
+  #compare kmers between case and ctrl takes ~30s
+  
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  } 
+    
+  print("calculating kmer statistics...", print = FALSE)
+  
+  kmer_stats <- left_join(ctrl_kmer, case_kmer) %>% 
+    na.omit() %>% 
+    mutate(ctrl_freq = ctrl / sum(ctrl),
+           case_freq = case / sum(case),
+           log2FC = log2(case_freq/ctrl_freq),
+           ctrl_tot = sum(ctrl)-ctrl,
+           case_tot = sum(case)-case) %>% 
+    rowwise() %>% 
+    mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+           p_adj = p.adjust(pval, method = "BH", 4^k))
+  
+  print("calculations complete.", quote = FALSE)
+  
+  kmer_stats
+}
+
+kmer_plot <- function(kmer_stats){
+  p <- kmer_stats %>% mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot(aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) + geom_point() + scale_color_manual(values = c("Red", "Black")) + scale_alpha_manual(values = c(1, 0.1)) + geom_text(data = subset(p, sig == "0.05"), aes(label = kmer), nudge_y = 1) + theme_cowplot() 
+}
+
+estimate_Motif_from_Kmer <- function(enriched_kmers, motif_set){
+ 
+  if(length(unique(nchar(as.character(enriched_kmers)))) != 1){
+    warning("kmers in kmer list are not the same length using the shortest kmer as k")
+    k = min(unique(nchar(as.character(enriched_kmers))))
+  }
+  else
+    k = unique(nchar(as.character(enriched_kmers)))
+  
+  if(motif_set != "cisbpRNA" & motif_set != "RBNS"){
+    stop(paste("motif_set must be either \"cisbpRNA\" or \"RBNS\"", quote = FALSE))
+  }
+  
+  if(k == 4 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_cisbpRNA.txt")
+  }
+  else if(k == 4 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_RBNS.txt")
+  }
+  else if(k == 5 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_cisbpRNA.txt")
+  }
+  else if (k == 5 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_RBNS.txt")
+  }
+  else if(k == 6 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_cisbpRNA.txt")
+  }
+  else if (k == 6 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_RBNS.txt")
+  }
+  else if(k == 7 & motif_set == "cisbpRNA"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+  }
+  else if (k == 7 & motif_set == "RBNS"){
+    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_RBNS.txt")
+  }
+
+  ##calculate probablility of matching...
+
+  motif_by_kmer %>% 
+    as_tibble() %>% 
+    mutate(enriched = rowSums(dplyr::select(., enriched_kmers)), 
+           all = rowSums(dplyr::select(., -motif))) %>% 
+    separate(motif, into = c("RBP", "motif", "logo", "tile"), sep = "_", fill = "right") %>% 
+    group_by(RBP, motif, logo) %>% 
+    summarize(enriched = sum(enriched), all = sum(all)) %>% 
+    mutate(p_val = phyper(enriched-1, length(enriched_kmers), (4^k)-length(enriched_kmers), all, lower.tail = FALSE), 
+           p_adj = p.adjust(p_val, method = "BH", n = nrow(.)))  %>% 
+    arrange(p_adj) %>% 
+    unite(RBP, motif, logo, col = "motif", sep = "_")
+
+}
+
+RBP_esimate_plot <- function(RBP_stats){
+  p <- RBP_stats %>% mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot(aes(x = log2((enriched/all) + 1), y = -log(p_adj), alpha = sig, col = sig)) + geom_point() + scale_color_manual(values = c("Red", "Black")) + scale_alpha_manual(values = c(1, 0.1)) + geom_text(data = subset(p, sig == "0.05"), aes(label = motif), nudge_y = 1) + theme_cowplot() 
+}
+
+RBNS_compare <- function(motif_path, caseDNAStringset, ctrlDNAStringSet){
+  
+  #get paths to each motif pwm
+  
+  print("getting Motif and RBP data...", quote = FALSE)
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(path = motif_paths)
+  motifs <- motif_info %>% 
+    as_tibble(rownames = "PATH") %>% 
+    mutate(motif = str_match(PATH, "PWMs/(.*?).PWM")[,2]) %>% 
+    dplyr::select(PATH, motif)
+
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  }
+
+  print("Counting motif occurances and calculating statistics...", quote = FALSE)
+
+  
+  motifs <- motifs %>%
+    mutate(PWM = lapply(PATH, function(x) t(read.table(x, skip = 1, row.names = 1, header = TRUE, col.names = c("pos","A", "C", "G", "T")))),
+           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+           case_freq = case / sum(width(caseDNAStringset)), 
+           ctrl_freq = ctrl / sum(width(ctrlDNAStringSet)), 
+           log2FC = log2(case_freq/ctrl_freq),
+           case_tot = sum(case)-case,
+           ctrl_tot = sum(ctrl)-ctrl) %>% 
+    rowwise() %>% 
+    mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+             p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
+    dplyr::select(motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj)
+
+  motifs
+  
+}
+
+cisBPRNA_compare <- function(motif_path, RBPinfo, caseDNAStringset, ctrlDNAStringSet){
+  
+  #get paths to each motif pwm
+  
+  print("getting Motif and RBP data...", quote = FALSE)
+  
+  motif_paths <- list.files(path = motif_path, full.names = TRUE)
+  motif_info <- file.info(motif_paths)
+  motif_info <- motif_info[motif_info$size != 0, ]
+  motifs <- motif_info %>% 
+    as_tibble(rownames = "PATH") %>% 
+    mutate(motif = str_match(PATH, "motifs/(.*?).txt")[,2]) %>% 
+    dplyr::select(PATH, motif)
+
+  #merge motif paths with RBP info
+  
+  RBP_info <- read.table(RBPinfo, header = TRUE, sep = "\t")
+  RBP_info <- RBP_info %>% 
+    as_tibble() %>% 
+    dplyr::select(Motif_ID, RBP_Name) %>% 
+    filter(Motif_ID != ".") %>% 
+    group_by(Motif_ID) %>%
+    summarise(RBP_name = dplyr::first(RBP_Name))
+
+  motifs <- left_join(motifs, RBP_info, by = c("motif" = "Motif_ID"))
+
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  }
+  
+  print("Counting motif occurances and calculating statistics...", quote = FALSE)
+  
+  motifs <- motifs %>%
+    mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))), 
+           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) countPWM(x, y)) %>% unlist() %>% sum())), 
+           case_freq = case / sum(width(caseDNAStringset)), 
+           ctrl_freq = ctrl / sum(width(ctrlDNAStringSet)), 
+           log2FC = log2(case_freq/ctrl_freq),
+           case_tot = sum(case)-case,
+           ctrl_tot = sum(ctrl)-ctrl) %>% 
+    rowwise() %>% 
+    mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+             p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
+    dplyr::select(RBP_name, motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj)
+
+  motifs
+}
+
+cisbp_plot <- function(RBP_stats){
+  p <- RBP_stats %>% mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot(aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) + geom_point() + scale_color_manual(values = c("Red", "Black")) + scale_alpha_manual(values = c(1, 0.1)) + geom_text(data = subset(p, sig == "0.05"), aes(label = paste(RBP_name, motif, sep = "_")), nudge_y = 1) + theme_cowplot() 
+}
+
+RBNS_plot <- function(RBP_stats){
+  p <- RBP_stats %>% mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot(aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) + geom_point() + scale_color_manual(values = c("Red", "Black")) + scale_alpha_manual(values = c(1, 0.1)) + geom_text(data = subset(p, sig == "0.05"), aes(label = motif), nudge_y = 1) + theme_cowplot() 
+}
+
+```
+
+## In this experiment, RBFOX2, a splicing factor, was knocked out (I think). Several introns become enhanced (?) due to the absence of RBFOX2. The fastas below contatain the sequences downstream from enhanced introns and all other (unchanged) introns.
+
+```{r, load in RBFOX2 fastas}
+case <- readDNAStringSet("data/RBFOX2/DownstreamIntron.Enhanced.fasta")
+ctrl <- readDNAStringSet("data/RBFOX2/DownstreamIntron.Control.fasta")
+
+```
+
+### Using these fastas, we can identify sixmers that are over-represented downstream of enhanceed introns as compared to downstream sequence from all other introns
+
+```{r,  enriched kmers}
+kmer_stats <- kmer_compare(case, ctrl, 6) # 5sec
+
+kmer_stats
+
+kmer_plot(kmer_stats) #should probably add options to change cutoff value...
+
+
+##enriched kmers are of particular interest.
+enriched_kmers <- kmer_stats %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., kmer) %>% as.character()
+
+```
+
+### Collapsing these enriched kmers into similar groups is more useful when more kmers are enriched... 
+
+```{r, cluster kmers}
+#need function still
+
+##Considering all kmers together we can create this consensus motif:
+consensusMatrix(DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+
+
+##We can further group these kmers to get more specific consensus motifs:
+d  <- adist(enriched_kmers) #this is Levenshtein distance 
+rownames(d) <- enriched_kmers
+hc <- hclust(as.dist(d))
+plot(hc)
+#using the above plot, users can define k as they see fit or possibly define some default based on string distance?
+rect.hclust(hc, k=2, border = "red")
+df <- data.frame(kmer = enriched_kmers ,group = cutree(hc,k=2)) %>% as_tibble()
+
+
+##The below motifs best represent the enriched kmers
+consensusMatrix(DNAStringSet(pull(filter(df, group == 1), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+consensusMatrix(DNAStringSet(pull(filter(df, group == 2), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+
+
+```
+
+### Finally, we can use the enriched sixmers to estimate RBP binding sites
+
+```{r, estimate RBP binding from kmers}
+RBNS_estimate <- estimate_Motif_from_Kmer(enriched_kmers, "RBNS") #1.5 sec
+RBNS_estimate
+cisbp_estimate <- estimate_Motif_from_Kmer(enriched_kmers, "cisbpRNA") #1.8 sec
+cisbp_estimate
+
+```
+
+```{r, actual PWM scanning}
+#RBFOX2_RBNS_compare <- RBNS_compare("data/RBNSdat/RBNS_PWMs", case, ctrl) #10.5min
+#RBFOX2_cisbpRNA_compare <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", case, ctrl) #16.2min
+
+#write.table(RBFOX2_RBNS_compare, "data/RBFOX2/RBFOX2_RBNS_compare.txt")
+#write.table(RBFOX2_cisbpRNA_compare, "data/RBFOX2/RBFOX2_cisbpRNA_compare.txt")
+
+RBFOX2_RBNS_compare <- read.table("data/RBFOX2/RBFOX2_RBNS_compare.txt") %>% as_tibble()
+RBFOX2_cisbpRNA_compare <- read.table("data/RBFOX2/RBFOX2_cisbpRNA_compare.txt") %>% as_tibble()
+
+
+RBNS_estimate <- RBNS_estimate %>% arrange(p_adj) %>% mutate(est_rank = c(1:nrow(.)))
+cisbp_estimate <- cisbp_estimate %>% arrange(p_adj) %>% mutate(est_rank = c(1:nrow(.)))
+
+RBFOX2_RBNS_compare %>% as_tibble() %>% arrange(p_adj)
+RBFOX2_cisbpRNA_compare %>% as_tibble() %>% arrange(p_adj)
+
+
+
+##compare to direct motif scanning output:
+##Ranked on adjusted p values and log2FC (for motif scan only)
+##problematic because most of estimate is ranked alphabetically (besides the first 3)
+RBFOX2_RBNS_top <- RBFOX2_RBNS_compare %>% ungroup() %>%  filter(log2FC > 0) %>% arrange(desc(log2FC), p_adj) %>% mutate(rank = c(1:nrow(.)))
+RBFOX2_RBNS_bottom <- RBFOX2_RBNS_compare %>% ungroup() %>%  filter(log2FC < 0) %>% arrange(desc(log2FC), desc(p_adj)) %>% mutate(rank = c((nrow(RBFOX2_RBNS_top)+1):(nrow(.)+nrow(RBFOX2_RBNS_top))))
+RBFOX2_RBNS_compare <- rbind(RBFOX2_RBNS_top, RBFOX2_RBNS_bottom)
+
+RBFOX2_cisbpRNA_top <- RBFOX2_cisbpRNA_compare %>% ungroup() %>%  filter(log2FC > 0) %>% arrange(desc(log2FC), p_adj) %>% mutate(rank = c(1:nrow(.)))
+RBFOX2_cisbpRNA_bottom <- RBFOX2_cisbpRNA_compare %>% ungroup() %>%  filter(log2FC < 0) %>% arrange(desc(log2FC), desc(p_adj)) %>% mutate(rank = c((nrow(RBFOX2_cisbpRNA_top)+1):(nrow(.)+nrow(RBFOX2_cisbpRNA_top))))
+RBFOX2_cisbpRNA_compare <- rbind(RBFOX2_cisbpRNA_top, RBFOX2_cisbpRNA_bottom)
+
+full_join(RBFOX2_RBNS_compare, RBNS_estimate, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+cisbp_estimate %>% separate(motif, into = c("RBP_name", "motif", "extra"), sep = "_") %>% unite(motif, extra, col = "motif") %>% full_join(., RBFOX2_cisbpRNA_compare, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+##plotted adjusted pval to adjusted pval.
+##limited because enriched/depleted not considered what so ever.
+
+cisbp_estimate %>% separate(motif, into = c("RBP", "motif"), extra = "merge") %>% dplyr::select(RBP, motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., RBFOX2_cisbpRNA_compare) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+RBNS_estimate %>% dplyr::select(motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., RBFOX2_RBNS_compare) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+##phyper overlap
+est_hits <- RBNS_estimate %>%  filter(p_adj < 0.05) %>% pull(., motif)
+length(est_hits)
+scan_hits <- RBFOX2_RBNS_compare %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., motif)
+length(scan_hits)
+est_hits %in% scan_hits %>% sum()
+
+phyper(sum(est_hits %in% scan_hits)-1, length(scan_hits), nrow(RBFOX2_RBNS_compare)-length(scan_hits), length(est_hits), lower.tail = FALSE)
+
+
+
+est_hits <- cisbp_estimate %>% separate(motif, into = c("RBP_name", "motif"), extra = "merge") %>% filter(p_adj < 0.05) %>% pull(., motif)
+length(est_hits)
+scan_hits <- RBFOX2_cisbpRNA_compare %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., motif)
+length(scan_hits)
+est_hits %in% scan_hits %>% sum()
+
+phyper(sum(est_hits %in% scan_hits)-1, length(scan_hits), nrow(RBFOX2_cisbpRNA_compare)-length(scan_hits), length(est_hits), lower.tail = FALSE)
+
+
+```
+
