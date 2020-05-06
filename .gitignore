@@ -2,5 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-data
+mydata
 knit html
+inst/doc

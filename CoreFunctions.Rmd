@@ -53,8 +53,8 @@ GFF2df <- function(genomeGFF3, filter = TRUE, protein.coding = FALSE){
   
 }
 #These take less than 4 minutes each.
-#mmGFF <- GFF2df("data/gencode.vM20.annotation.gff3.gz")
-#hsGFF <- GFF2df("data/gencode.v33.annotation.gff3.gz")
+#mmGFF <- GFF2df("mydata/gencode.vM20.annotation.gff3.gz")
+#hsGFF <- GFF2df("mydata/gencode.v33.annotation.gff3.gz")
 ```
 
 ```{r, subsetGFF3}
@@ -81,7 +81,7 @@ writeGFF <- function(gff_df, file_name){
   rownames(gff_df) <- NULL
   write.table(gff_df, paste(file_name, ".gff3", sep = ""), row.names = FALSE, quote = FALSE)
 }
-#writeGFF(sGFF, "data/test")
+#writeGFF(sGFF, "mydata/test")
 ```
 
 #Here is where my attempts to re-invent the wheel fail
@@ -99,8 +99,8 @@ fa2DNAstringSet <- function(fa){
   names(fa) <- sub(" .*", "", names(fa))
   fa
 }
-#mmGenome_DNAstringSet <- fa2DNAstringSet("data/GRCm38.p6.genome.fa")
-#hsGenome_DNAstringSet <- fa2DNAstringSet("data/GRCh38.p13.genome.fa")
+#mmGenome_DNAstringSet <- fa2DNAstringSet("mydata/GRCm38.p6.genome.fa")
+#hsGenome_DNAstringSet <- fa2DNAstringSet("mydata/GRCh38.p13.genome.fa")
 ```
 
 ```{r, GFF2FA}
@@ -116,7 +116,7 @@ GFF2FA <- function(GFF_df, genome_DNAstringSet, fa_name){
   
   
 }
-#gFF2FA(sGFF, DNAstringset, "data/test.fa")
+#gFF2FA(sGFF, DNAstringset, "mydata/test.fa")
 ```
 
 
@@ -135,9 +135,9 @@ GFF2FA <- function(GFF_df, genome_DNAstringSet, fa_name){
 #the output from filter_Tx() is a TxDb object containing a gene model of the filtered transcripts
 #this Txdb object is required for downstream functions
 #if filtering is not desired, the below functions will create TxDb objects for human and mouse Gencode data
-#hs_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/Gencodedat/gencode.v33.annotation.gff3.gz", format = "gff3", organism = "Homo sapiens") # 11min 
+#hs_gff <- GenomicFeatures::makeTxDbFromGFF(file = "mydata/Gencodedat/gencode.v33.annotation.gff3.gz", format = "gff3", organism = "Homo sapiens") # 11min 
 #GenomeInfoDb::seqlevelsStyle(hs_gff) <- "NCBI"
-#mm_gff <- GenomicFeatures::makeTxDbFromGFF(file = "data/Gencodedat/gencode.vM20.annotation.gff3.gz", format = "gff3", organism = "Mus musculus")
+#mm_gff <- GenomicFeatures::makeTxDbFromGFF(file = "mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", format = "gff3", organism = "Mus musculus")
 
 filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
   gff <- rtracklayer::import(gff)
@@ -148,17 +148,17 @@ filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
     #remove transcripts with undefined starts or ends
     NF <- c("cds_start_NF", "cds_end_NF", "mRNA_start_NF", "mRNA_end_NF")
     `%out%` = Negate(`%in%`)
-    gff <- gff[all(gff$tag %out% NF)]
+    gff <- gff[as.list(gff$tag) %out% NF]
     print("filtering complete.", quote = FALSE)
   }
-  
+
   if (protein.coding == TRUE){
     print("filtering out non-coding transcripts...", quote = FALSE)
     #remove non-coding transcripts
-    gff <- gff %>% gff[gff$transcript_type == "protein_coding"]
+    gff <- gff[gff$transcript_type == "protein_coding" | is.na(gff$transcript_type)]
     print("filtering complete.", quote = FALSE)
-    }
-  
+  }
+
   #create txdb gene model from filtered gff
   if (all(grepl("ENSG", gff$gene_id))){
     txdbGFF <- GenomicFeatures::makeTxDbFromGRanges(gff)
@@ -166,13 +166,13 @@ filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE){
   } else if (all(grepl("ENSMUSG", gff$gene_id))){
     txdbGFF <- GenomicFeatures::makeTxDbFromGRanges(gff)
   }
-  
+
   return(txdbGFF)
-  
+
 }
 
-mm_f_gff <- filter_Tx("data/Gencodedat/gencode.vM20.annotation.gff3.gz") #3.5 min
-hs_f_gff <- filter_Tx("data/Gencodedat/gencode.v33.annotation.gff3.gz") #1.5 min
+mm_f_gff <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz") #3.5 min
+hs_f_gff <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz") #1.5 min
 
 ```
 
@@ -182,45 +182,50 @@ hs_f_gff <- filter_Tx("data/Gencodedat/gencode.v33.annotation.gff3.gz") #1.5 min
 #If you instead have sets of genes, we recommend using expression data to find expresed transcripts within your experiment
 #otherwise, use gene2tx() to create transcript sets from either make_longest_df or make_median_df
 
-RNA_breakdown <- function(gff, tx_list){
-  
+RNA_breakdown <- function(gff, tx_list) {
+  # Check that tx_list doesn't contain Ensembl gene IDs
   print("Ensuring compatibility of GFF and transcript list...", quote = FALSE)
-  if (any(grepl("ENSG", tx_list)) | any(grepl("ENSMUSG", tx_list))){
+  if (any(grepl("ENSG", tx_list)) | any(grepl("ENSMUSG", tx_list))) {
     stop("Please ensure the transcript list contains transcript IDs and not gene IDs.")
   }
-  
-  ifelse(all(grepl("ENST", tx_list)), 
-         (list_species = "human"), 
-         ifelse(all(grepl("ENSMUST", tx_list)), 
-                (list_species = "mouse"), 
+  # Determine the species of tx_list
+  ifelse(all(grepl("ENST", tx_list)),
+         (list_species = "human"),
+         ifelse(all(grepl("ENSMUST", tx_list)),
+                (list_species = "mouse"),
                 (list_species = "unknown")))
-  
+  # Import gencode gff as GRanges object
   gff <- rtracklayer::import(gff)
+  # Determine species of gff annotations
   gff_species = "unknown"
-  if (all(grepl("ENSG", gff$gene_id))){
+  if (all(grepl("ENSG", gff$gene_id))) {
     gff_species = "human"
-  } else if (all(grepl("ENSMUSG", gff$gene_id))){
+  } else if (all(grepl("ENSMUSG", gff$gene_id))) {
     gff_species = "mouse"
   }
-  
-  if (list_species != gff_species){ 
+  # Ensure tx_list and gff are of the same species
+  if (list_species != gff_species) {
     stop("Please ensure the transcript list and gff are of the same species.")
   }
-  print("GFF and transcript list are compatible.", quote = FALSE)
-  
+  print("Gff and transcript list are compatible.", quote = FALSE)
+
   print("Getting RNA type information...")
   gff <- gff[gff$type == "transcript"]
   gff <- gff[gff$transcript_id %in% tx_list]
   
-  RNA_breakdown <- gff@elementMetadata %>% 
-    dplyr::as_tibble() %>% 
-    dplyr::group_by(transcript_type) %>% 
-    dplyr::summarize(percent = n() / nrow(.) * 100)
+  if (length(gff) == 0) {
+    stop("No transcript IDs in tx_list were not found in gff.")
+  }
   
+  RNA_breakdown <- gff@elementMetadata %>%
+    dplyr::as_tibble() %>%
+    dplyr::group_by(transcript_type) %>%
+    dplyr::summarize(count = n(),
+                     percent = n() / nrow(.) * 100)
+
   return(RNA_breakdown)
 }
-
-RNA_breakdown("data/Gencodedat/gencode.vM20.annotation.gff3.gz", mm_tx)
+RNA_breakdown("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", mm_tx)
 
 ```
 
@@ -247,9 +252,9 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
                 (list_species = "mouse"), 
                 (list_species = "unknown")))
   
-  ifelse(grepl("ENSG", genes(TxDb_gff)[1]$gene_id), 
+  ifelse(grepl("ENSG", GenomicFeatures::genes(TxDb_gff)[1]$gene_id), 
          (gff_species = "human"), 
-         ifelse(grepl("ENSMUSG",genes(TxDb_gff)[1]$gene_id),
+         ifelse(grepl("ENSMUSG", GenomicFeatures::genes(TxDb_gff)[1]$gene_id),
                 (gff_species = "mouse"), 
                 (gff_species = "unknown")))
   
@@ -319,7 +324,7 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
     
     } else if (output_type == "gff3"){
     print("writing GFF3...", quote = FALSE)
-    rtracklayer::export(tx_gff, paste(file_name, ".gff3", sep = ""), format = "GFF")
+    rtracklayer::export(tx_gff, paste(file_name, ".gff3", sep = ""), format = "gff3")
     print("GFF3 written.", quote = FALSE)
     
     } else if (output_type == "both"){
@@ -328,7 +333,7 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
     print("fasta writen.", quote = FALSE)
     
     print("writing GFF3...", quote = FALSE)
-    rtracklayer::export(tx_gff, paste(file_name, ".gff3", sep = ""), format = "GFF")
+    rtracklayer::export(tx_gff, paste(file_name, ".gff3", sep = ""), format = "gff3")
     print("GFF3 written.", quote = FALSE)
     
     } else
@@ -338,7 +343,9 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   print(paste("Querried ", length(tx_gff), " of ", length(tx_list), " requested genes.", sep = ""), quote = FALSE)
   print(paste("Querried ", sum(Biostrings::width(seq))/1000, " KB of sequence.", sep = ""), quote = FALSE)
 }
-#getTxOut(hs_gff, hs_tx, "CDS", "data/test", "fa")
+#getTxOut(hs_gff, hs_tx, "CDS", "mydata/hs_test", "gff3")
+#getTxOut(mm_gff, mm_tx, "CDS", "mydata/mm_test", "gff3")
+
 ```
 
 
