@@ -19,10 +19,11 @@
 #' percent of the total set an RNA type represents (percent).
 #' @seealso \code{\link{gene2tx()}},
 #' \code{\link{make_longest_df}}, \code{\link{make_median_df}}
+#' @importFrom magrittr "%>%"
 #' @examples
 #' mm_tx <- c("ENSMUST00000159265.1", "ENSMUST00000027032.5", "ENSMUST00000130201.7", "ENSMUST00000157375.1")
 #' RNA_breakdown("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", mm_tx)
-
+#' @export
 RNA_breakdown <- function(gff, tx_list) {
   # Check that tx_list doesn't contain Ensembl gene IDs
   print("Ensuring compatibility of GFF and transcript list...", quote = FALSE)

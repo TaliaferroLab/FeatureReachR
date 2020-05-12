@@ -30,7 +30,7 @@
 #' # Filter out low confidence transcripts and non-coding transcripts
 #' hs_coding_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz", protein.coding = TRUE)
 #' mm_coding_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", protein.coding = TRUE)
-#'
+#' @export
 filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE) {
   # import gencode gff as GRanges object
   gff <- rtracklayer::import(gff)

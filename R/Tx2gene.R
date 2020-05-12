@@ -12,12 +12,13 @@
 #'   \code{\link{make_median_df}}
 #' @return \code{gene2Tx} returns a character list of Ensembl transcript IDs
 #'   associated with the length and sequence type of interest.
+#' @importFrom magrittr "%>%"
 #' @examples
 #' hs_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz")
 #' longest_hs <- make_longest_df(hs_filtered_TxDb)
 #' hs_gene <- c("ENSG00000000419.12", "ENSG00000001167.14", "ENSG00000000938.13")
 #' hs_tx <- gene2Tx(longest_hs, hs_gene, "UTR3")
-
+#' @export
 gene2Tx <- function(length_df, gene_list, seq_type) {
   #Check that gene list contains genes
 

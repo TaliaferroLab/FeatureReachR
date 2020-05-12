@@ -29,7 +29,7 @@
 #' mm_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz")
 #' mm_tx <- c("ENSMUST00000159265.1", "ENSMUST00000027032.5", "ENSMUST00000130201.7", "ENSMUST00000157375.1")
 #' getTxOut(mm_filtered_TxDb, mm_tx, "5pUTR", "mydata/mm_test", "both")
-#'
+#' @export
 getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type) {
   #Check that transcript list contains transcripts
 
@@ -47,9 +47,9 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type) {
                 (list_species = "mouse"),
                 (list_species = "unknown")))
 
-  ifelse(grepl("ENSG", genes(TxDb_gff)[1]$gene_id),
+  ifelse(grepl("ENSG", GenomicFeatures::genes(TxDb_gff)[1]$gene_id),
          (gff_species = "human"),
-         ifelse(grepl("ENSMUSG",genes(TxDb_gff)[1]$gene_id),
+         ifelse(grepl("ENSMUSG",GenomicFeatures::genes(TxDb_gff)[1]$gene_id),
                 (gff_species = "mouse"),
                 (gff_species = "unknown")))
 

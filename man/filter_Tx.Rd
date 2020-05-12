@@ -43,5 +43,4 @@ mm_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz
 # Filter out low confidence transcripts and non-coding transcripts
 hs_coding_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz", protein.coding = TRUE)
 mm_coding_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", protein.coding = TRUE)
-
 }

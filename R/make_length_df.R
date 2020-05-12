@@ -11,6 +11,7 @@
 #'   longest CDS and longest 3'UTR  for a gene may not belong to the same
 #'   transcript, there is a column for each sequence type.
 #' @seealso \code{\link{filter_Tx}}, \code{\link{gene2tx}}
+#' @importFrom magrittr "%>%"
 #' @examples
 #' hs_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz")
 #' longest_hs <- make_longest_df(hs_filtered_TxDb)
@@ -18,6 +19,7 @@
 #'
 #' @describeIn make_length_df creates a dataframe of the
 #'   transcripts with the longest features for each gene in a TxDb object
+#' @export
 make_longest_df <- function(TxDb_gff){
   #identify transcript with longest feature for each gene
 
@@ -79,33 +81,32 @@ make_median_df <- function(TxDb_gff){
   #ignore isoforms with no feature when calculating median (many transcripts lack CDS, UTR3 and UTR5 features)
   len_df[len_df == 0] <- NA
 
-  median_tx <- len_df %>%
-    dplyr::group_by(gene_id) %>%
-    dplyr::filter(abs(tx_len - median(tx_len, na.rm = TRUE)) == min(abs(tx_len - median(tx_len, na.rm = TRUE)), na.rm = TRUE)) %>%
-    dplyr::rename("whole" = tx_name) %>%
-    dplyr::select(gene_id, whole)
+  suppressWarnings(median_tx <- len_df %>%
+                     dplyr::group_by(gene_id) %>%
+                     dplyr::filter(abs(tx_len - median(tx_len, na.rm = TRUE)) == min(abs(tx_len - median(tx_len, na.rm = TRUE)), na.rm = TRUE)) %>%
+                     dplyr::rename("whole" = tx_name) %>%
+                     dplyr::select(gene_id, whole))
 
-  median_tx <- len_df %>%
-    dplyr::group_by(gene_id) %>%
-    dplyr::filter(abs(cds_len - median(cds_len, na.rm = TRUE)) == min(abs(cds_len - median(cds_len, na.rm = TRUE)), na.rm = TRUE)) %>%
-    dplyr::rename("CDS" = tx_name) %>%
-    dplyr::select(gene_id, CDS) %>%
-    dplyr::left_join(., median_tx)
+  suppressWarnings(median_tx <- len_df %>%
+                      dplyr::group_by(gene_id) %>%
+                      dplyr::filter(abs(cds_len - median(cds_len, na.rm = TRUE)) == min(abs(cds_len - median(cds_len, na.rm = TRUE)), na.rm = TRUE)) %>%
+                      dplyr::rename("CDS" = tx_name) %>%
+                      dplyr::select(gene_id, CDS) %>%
+                      dplyr::left_join(., median_tx))
 
-  median_tx <- len_df %>%
-    dplyr::group_by(gene_id) %>%
-    dplyr::filter(abs(utr5_len - median(utr5_len, na.rm = TRUE)) == min(abs(utr5_len - median(utr5_len, na.rm = TRUE)), na.rm = TRUE)) %>%
-    dplyr::rename("UTR5" = tx_name) %>%
-    dplyr::select(gene_id, UTR5) %>%
-    dplyr::left_join(., median_tx)
+  suppressWarnings(median_tx <- len_df %>%
+                      dplyr::group_by(gene_id) %>%
+                      dplyr::filter(abs(utr5_len - median(utr5_len, na.rm = TRUE)) == min(abs(utr5_len - median(utr5_len, na.rm = TRUE)), na.rm = TRUE)) %>%
+                      dplyr::rename("UTR5" = tx_name) %>%
+                      dplyr::select(gene_id, UTR5) %>%
+                      dplyr::left_join(., median_tx))
 
-  median_tx <- len_df %>%
-    dplyr::group_by(gene_id) %>%
-    dplyr::filter(abs(utr3_len - median(utr3_len, na.rm = TRUE)) == min(abs(utr3_len - median(utr3_len, na.rm = TRUE)), na.rm = TRUE)) %>%
-    dplyr::rename("UTR3" = tx_name) %>%
-    dplyr::select(gene_id, UTR3) %>%
-    dplyr::left_join(., median_tx)
-
+  suppressWarnings(median_tx <- len_df %>%
+                     dplyr::group_by(gene_id) %>%
+                     dplyr::filter(abs(utr3_len - median(utr3_len, na.rm = TRUE)) == min(abs(utr3_len - median(utr3_len, na.rm = TRUE)), na.rm = TRUE)) %>%
+                     dplyr::rename("UTR3" = tx_name) %>%
+                     dplyr::select(gene_id, UTR3) %>%
+                     dplyr::left_join(., median_tx))
 
   median_tx <- median_tx %>%
     dplyr::group_by(gene_id) %>%

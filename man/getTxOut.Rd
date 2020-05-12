@@ -43,7 +43,6 @@ getTxOut(hs_filtered_TxDb, hs_tx, "CDS", "mydata/hs_test", "both")
 mm_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz")
 mm_tx <- c("ENSMUST00000159265.1", "ENSMUST00000027032.5", "ENSMUST00000130201.7", "ENSMUST00000157375.1")
 getTxOut(mm_filtered_TxDb, mm_tx, "5pUTR", "mydata/mm_test", "both")
-
 }
 \seealso{
 \code{\link{filter_Tx}}, \code{\link{gene2tx}},

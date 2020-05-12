@@ -7,12 +7,12 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(Biostrings)
-
+library(cowplot)
 ```
 
 ```{r, read in test dat}
-#MT_FMR1 <- readDNAStringSet("data/FMR1dat/SD3deltaLRGenes.longest3UTR.fa")
-#MT_FMR1_ctrl <- readDNAStringSet("data/FMR1dat/UnchangeddeltaLRGenes.longest3UTR.fa")
+#MT_FMR1 <- readDNAStringSet("mydata/FMR1dat/SD3deltaLRGenes.longest3UTR.fa")
+#MT_FMR1_ctrl <- readDNAStringSet("mydata/FMR1dat/UnchangeddeltaLRGenes.longest3UTR.fa")
 
 #FMR1_genes <- substr(names(MT_FMR1), 1, 18)
 #FMR1_genes_ctrl <- substr(names(MT_FMR1_ctrl), 1, 18)
@@ -20,11 +20,11 @@ library(Biostrings)
 #FMR1_UTR3_tx <- gene2Tx(longest_mm, FMR1_genes, "UTR3") #1s
 #FMR1_UTR3_tx_ctrl <- gene2Tx(longest_mm, FMR1_genes_ctrl, "UTR3") #1s
 
-#getTxOut(mm_f_gff, FMR1_UTR3_tx, "UTR3", "data/FMR1dat/longest_3UTR_FMR1", "fa") 
-#getTxOut(mm_f_gff, FMR1_UTR3_tx_ctrl, "UTR3", "data/FMR1dat/longest_3UTR_FMR1_ctrl", "fa")
+#getTxOut(mm_f_gff, FMR1_UTR3_tx, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1", "fa") 
+#getTxOut(mm_f_gff, FMR1_UTR3_tx_ctrl, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1_ctrl", "fa")
 
-longest_3UTR_FMR1 <-readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1.fa") #30s
-longest_3UTR_FMR1_ctrl <- readDNAStringSet("data/FMR1dat/longest_3UTR_FMR1_ctrl.fa") #30s
+longest_3UTR_FMR1 <-readDNAStringSet("mydata/FMR1dat/longest_3UTR_FMR1.fa") #30s
+longest_3UTR_FMR1_ctrl <- readDNAStringSet("mydata/FMR1dat/longest_3UTR_FMR1_ctrl.fa") #30s
   
 ```
 
@@ -94,9 +94,12 @@ kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
 
 #kmer_by_gene(longest_3UTR_FMR1, 6)
 #FMR1_kmer <- kmer_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl, 6)
-#saveRDS(FMR1_kmer, "data/FMR1dat/kmer_FMR1_compare.txt")
-FMR1_kmer <- readRDS("data/FMR1dat/kmer_FMR1_compare.txt")
+#saveRDS(FMR1_kmer, "mydata/FMR1dat/kmer_FMR1_compare.txt")
+FMR1_kmer <- readRDS("mydata/FMR1dat/kmer_FMR1_compare.txt")
 FMR1_kmer %>% arrange(p_adj)
+
+##for later
+pos_FMR1_kmer <- FMR1_kmer %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., kmer)
 
 ```
 
@@ -215,7 +218,7 @@ cisBPRNA_by_gene <- function(motif_path, RBPinfo, DNAStringset){
   print("Counting motif occurances complete.", quote = FALSE)
   
   motif_by_gene <- dplyr::bind_rows(counts_list, .id = "motif") %>% 
-    dplyr::spread(gene, value = value) %>% 
+    tidyr::spread(gene, value = value) %>% 
     dplyr::left_join(., RBP_info, by = c("motif" = "Motif_ID")) %>% 
     dplyr::select(motif, RBP_name, dplyr::everything())            
   
@@ -262,8 +265,8 @@ cisBPRNA_compare <- function(motif_path, RBPinfo, caseDNAStringset, ctrlDNAStrin
   
   motifs <- motifs %>%
     mutate(PWM = lapply(PATH, function(x) t(read.table(x, header = TRUE, row.names = 1, col.names = c("pos", "A", "C", "G", "T")))), 
-           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
-           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
+           case = suppressWarnings(unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))), 
+           ctrl = suppressWarnings(unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))), 
            case_freq = case / sum(Biostrings::width(caseDNAStringset)), 
            ctrl_freq = ctrl / sum(Biostrings::width(ctrlDNAStringSet)), 
            log2FC = log2(case_freq/ctrl_freq),
@@ -277,11 +280,11 @@ cisBPRNA_compare <- function(motif_path, RBPinfo, caseDNAStringset, ctrlDNAStrin
   return(motifs)
 }
 
-#cisBPRNA_by_gene("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1)
+#cisBPRNA_by_gene("mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1)
 
-#FMR1_motif <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
-#saveRDS(FMR1_motif, "data/FMR1dat/cisbpMotif_FMR1_compare.txt")
-FMR1_motif <- readRDS("data/FMR1dat/cisbpMotif_FMR1_compare.txt")
+#FMR1_motif <- cisBPRNA_compare("mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
+#saveRDS(FMR1_motif, "mydata/FMR1dat/cisbpMotif_FMR1_compare.txt")
+FMR1_motif <- readRDS("mydata/FMR1dat/cisbpMotif_FMR1_compare.txt")
 FMR1_motif %>% arrange(p_adj)
 
 ```
@@ -315,7 +318,7 @@ RBNS_by_gene <- function(motif_path, DNAStringset){
   
   print("Counting motif occurance complete.", quote = FALSE)
             
-  motif_by_gene <- dplyr::bind_rows(counts_list, .id = "motif") %>% dplyr::spread(gene, value = value) 
+  motif_by_gene <- dplyr::bind_rows(counts_list, .id = "motif") %>% tidyr::spread(gene, value = value) 
   
   return(motif_by_gene)
 }
@@ -347,8 +350,8 @@ RBNS_compare <- function(motif_path, caseDNAStringset, ctrlDNAStringSet){
   
   motifs <- motifs %>%
     mutate(PWM = lapply(PATH, function(x) t(read.table(x, skip = 1, row.names = 1, header = TRUE, col.names = c("pos","A", "C", "G", "T")))),
-           case = unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
-           ctrl = unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum())), 
+           case = suppressWarnings(unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))), 
+           ctrl = suppressWarnings(unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))), 
            case_freq = case / sum(Biostrings::width(caseDNAStringset)), 
            ctrl_freq = ctrl / sum(Biostrings::width(ctrlDNAStringSet)), 
            log2FC = log2(case_freq/ctrl_freq),
@@ -365,12 +368,76 @@ RBNS_compare <- function(motif_path, caseDNAStringset, ctrlDNAStringSet){
 
 
 
-#RBNS_by_gene("data/RBNSdat/RBNS_PWMs", longest_3UTR_FMR1)
+#RBNS_by_gene("mydata/RBNSdat/RBNS_PWMs", longest_3UTR_FMR1)
 
-#FMR1_RBNS <- RBNS_compare("data/RBNSdat/RBNS_PWMs", longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
-#saveRDS(FMR1_RBNS, "data/FMR1dat/RBNSMotif_FMR1_compare.txt")
-
+#FMR1_RBNS <- RBNS_compare("mydata/RBNSdat/RBNS_PWMs", longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
+#saveRDS(FMR1_RBNS, "mydata/FMR1dat/RBNSMotif_FMR1_compare.txt")
+FMR1_RBNS <- readRDS("mydata/FMR1dat/RBNSMotif_FMR1_compare.txt")
 FMR1_RBNS %>% arrange(p_adj)
+
+```
+
+```{r, custom PWM}
+#custom PWM lists should contain a list of named matrices where the name is unique, and the matrix columns represent positions, and the rows are the probability of each base "A", "C", "G", and "T".
+
+custom_PWM_by_gene <- function(PWM_list, DNAStringset){
+  
+  print("Checking PWM data", quote = FALSE)
+  
+  if (any(as.numeric(lapply(PWM_list, nrow)) != 4)){
+    stop("Error: Ensure all PWM matricies have exactly 4 rows (\"A\", \"C\", \"G\" and \"T\")")
+  }
+  motifs <- names(PWM_list) %>% as_tibble() %>% rename(value = "motif") %>% mutate(PWM = unname(PWM_list))
+  
+  print("Counting motif occurances...", quote = FALSE)
+
+  counts_list <- lapply(motifs$PWM, function(x) lapply(DNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% dplyr::as_tibble(rownames = "gene"))
+  names(counts_list) <- motifs$motif
+  
+  print("Counting motif occurance complete.", quote = FALSE)
+            
+  motif_by_gene <- dplyr::bind_rows(counts_list, .id = "motif") %>% tidyr::spread(gene, value = value) 
+  
+  return(motif_by_gene)
+}
+
+custom_PWM_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
+  
+  print("Checking PWM data", quote = FALSE)
+  
+  if (any(as.numeric(lapply(PWM_list, nrow)) != 4)){
+    stop("Error: Ensure all PWM matricies have exactly 4 rows (\"A\", \"C\", \"G\" and \"T\")")
+  }
+  motifs <- names(PWM_list) %>% as_tibble() %>% rename(value = "motif") %>% mutate(PWM = unname(PWM_list))
+  
+  fisher <- function(a, b, c, d){
+  mat <- matrix(c(a, b, c, d), nr = 2)
+  fisher.test(mat, alternative = "two.sided")$p.value
+  }
+
+  print("Counting motif occurances and calculating statistics...", quote = FALSE)
+
+  
+  motifs <- motifs %>%
+    mutate(case = suppressWarnings(unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))), 
+           ctrl = suppressWarnings(unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))), 
+           case_freq = case / sum(Biostrings::width(caseDNAStringset)), 
+           ctrl_freq = ctrl / sum(Biostrings::width(ctrlDNAStringSet)), 
+           log2FC = log2(case_freq/ctrl_freq),
+           case_tot = sum(case)-case,
+           ctrl_tot = sum(ctrl)-ctrl) %>% 
+    dplyr::rowwise() %>% 
+    dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
+             p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
+    dplyr::select(motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj)
+
+  return(motifs)
+  
+}
+
+custom_PWM_list <- readRDS("mydata/example_custom_PWM_list")
+custom_PWM_by_gene(custom_PWM_list, longest_3UTR_FMR1)
+custom_PWM_compare(custom_PWM_list, longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 
 ```
 
@@ -386,12 +453,12 @@ relate_Kmer_RBNS <- function(k, motif_path){
   x <- c("T", "A", "C", "G")
   
   kmers <- do.call(expand.grid, rep(list(x), k)) %>% 
-    dplyr::unite(kmer, sep = "") %>% 
+    tidyr::unite(kmer, sep = "") %>% 
     dplyr::pull(., kmer) %>% 
     Biostrings::DNAStringSet()
   
   names(kmers) <- do.call(expand.grid, rep(list(x), k)) %>% 
-    dplyr::unite(kmer, sep = "") %>% 
+    tidyr::unite(kmer, sep = "") %>% 
     dplyr::pull(., kmer)
 
   #get paths to each motif pwm
@@ -439,11 +506,11 @@ relate_Kmer_RBNS <- function(k, motif_path){
   print("Counting motif occurances complete.", quote = FALSE)
   
   motif_by_kmer <- dplyr::bind_rows(counts_list, .id = "motif") %>% 
-    dplyr::spread(kmer, value = value) %>% 
+    tidyr::spread(kmer, value = value) %>% 
     dplyr::select(motif, dplyr::everything())            
   
   motif_by_kmer <- motif_by_kmer %>% dplyr::as_tibble((. > 0) + 0) %>% dplyr::mutate(motif = .$motif)
-
+  return(motif_by_kmer)
 }
 
 relate_Kmer_CisBPRNA <- function(k, motif_path, RBPinfo){
@@ -452,12 +519,12 @@ relate_Kmer_CisBPRNA <- function(k, motif_path, RBPinfo){
   x <- c("T", "A", "C", "G")
   
   kmers <- do.call(expand.grid, rep(list(x), k)) %>% 
-    dplyr::unite(kmer, sep = "") %>% 
+    tidyr::unite(kmer, sep = "") %>% 
     dplyr::pull(., kmer) %>% 
     Biostrings::DNAStringSet()
   
   names(kmers) <- do.call(expand.grid, rep(list(x), k)) %>% 
-    dplyr::unite(kmer, sep = "") %>% 
+    tidyr::unite(kmer, sep = "") %>% 
     dplyr::pull(., kmer)
 
   #get paths to each motif pwm
@@ -517,32 +584,100 @@ relate_Kmer_CisBPRNA <- function(k, motif_path, RBPinfo){
   print("Counting motif occurances complete.", quote = FALSE)
   
   motif_by_kmer <- dplyr::bind_rows(counts_list, .id = "motif") %>% 
-    dplyr::spread(kmer, value = value) %>%
+    tidyr::spread(kmer, value = value) %>%
+    dplyr::select(motif, dplyr::everything())            
+  
+  motif_by_kmer <- motif_by_kmer %>% dplyr::as_tibble((. > 0) + 0) %>% dplyr::mutate(motif = .$motif)
+  return(motif_by_kmer)
+}
+
+relate_Kmer_custom_PWM <- function(k, PWM_list){
+
+    ##make DNAStringSets for every kmer
+  x <- c("T", "A", "C", "G")
+  
+  kmers <- do.call(expand.grid, rep(list(x), k)) %>% 
+    tidyr::unite(kmer, sep = "") %>% 
+    dplyr::pull(., kmer) %>% 
+    Biostrings::DNAStringSet()
+  
+  names(kmers) <- do.call(expand.grid, rep(list(x), k)) %>% 
+    tidyr::unite(kmer, sep = "") %>% 
+    dplyr::pull(., kmer)
+
+  #Check PWM_list
+  print("Checking PWM data", quote = FALSE)
+  
+  if (any(as.numeric(lapply(PWM_list, nrow)) != 4)){
+    stop("Error: Ensure all PWM matricies have exactly 4 rows (\"A\", \"C\", \"G\" and \"T\")")
+  }
+  
+  #this function makes every PWM the same length as k or shorter by tiling across longer PWM matrices
+  mattiles <- function(Mat, k) {
+    
+    if(ncol(Mat[[1]]) > k){  
+      x <- c(1:(ncol(Mat[[1]])-(k-1)))-1
+      list <- lapply(x, function(x) Mat[[1]][,(1+x):(k+x)])
+      names(list) <- lapply(x, function(x) paste(names(Mat), "_", x + 1, sep = ""))
+      list
+    }
+    else
+      Mat
+  }
+  
+  x <- 1:length(PWM_list)
+  tiled_motifs <- unlist(lapply(x, function(x) mattiles(PWM_list[x], k)), recursive = FALSE)
+  
+  
+  print("Counting motif occurances...", quote = FALSE)
+  
+  counts_list <- lapply(tiled_motifs, function(x) 
+    lapply(kmers, function(y) 
+      Biostrings::countPWM(x, y)) %>% unlist() %>% dplyr::as_tibble(rownames = "kmer"))
+  
+  print("Counting motif occurances complete.", quote = FALSE)
+  
+  motif_by_kmer <- dplyr::bind_rows(counts_list, .id = "motif") %>% 
+    tidyr::spread(kmer, value = value) %>% 
     dplyr::select(motif, dplyr::everything())            
   
   motif_by_kmer <- motif_by_kmer %>% dplyr::as_tibble((. > 0) + 0) %>% dplyr::mutate(motif = .$motif)
 
+  return(motif_by_kmer)
 }
 
-#fourmer_cisbpRNA <- relate_Kmer_CisBPRNA(4, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #3min
-#fivemer_cisbpRNA <- relate_Kmer_CisBPRNA(5, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #10min
-#sixmer_cisbpRNA <- relate_Kmer_CisBPRNA(6, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #26min
-#sevenmer_cisbpRNA <- relate_Kmer_CisBPRNA(7, "data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #57min
 
-#fourmer_RBNS <- relate_Kmer_RBNS(4, "data/RBNSdat/RBNS_PWMs") #1min
-#fivemer_RBNS <- relate_Kmer_RBNS(5, "data/RBNSdat/RBNS_PWMs") #3min
-#sixmer_RBNS <- relate_Kmer_RBNS(6, "data/RBNSdat/RBNS_PWMs") #8min
-#sevenmer_RBNS <- relate_Kmer_RBNS(7, "data/RBNSdat/RBNS_PWMs") #28min
+#fourmer_cisbpRNA <- relate_Kmer_CisBPRNA(4, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #3min
+#fivemer_cisbpRNA <- relate_Kmer_CisBPRNA(5, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #10min
+#sixmer_cisbpRNA <- relate_Kmer_CisBPRNA(6, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #26min
+#sevenmer_cisbpRNA <- relate_Kmer_CisBPRNA(7, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #57min
 
-#write.table(fourmer_cisbpRNA, file = "data/KmerMotifRelations/fourmer_cisbpRNA.txt")
-#write.table(fivemer_cisbpRNA, file = "data/KmerMotifRelations/fivemer_cisbpRNA.txt")
-#write.table(sixmer_cisbpRNA, file = "data/KmerMotifRelations/sixmer_cisbpRNA.txt")
-#write.table(sevenmer_cisbpRNA, file = "data/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+#fourmer_RBNS <- relate_Kmer_RBNS(4, "mydata/RBNSdat/RBNS_PWMs") #1min
+#fivemer_RBNS <- relate_Kmer_RBNS(5, "mydata/RBNSdat/RBNS_PWMs") #3min
+#sixmer_RBNS <- relate_Kmer_RBNS(6, "mydata/RBNSdat/RBNS_PWMs") #8min
+#sevenmer_RBNS <- relate_Kmer_RBNS(7, "mydata/RBNSdat/RBNS_PWMs") #28min
 
-#write.table(fourmer_RBNS, file = "data/KmerMotifRelations/fourmer_RBNS.txt")
-#write.table(fivemer_RBNS, file = "data/KmerMotifRelations/fivemer_RBNS.txt")
-#write.table(sixmer_RBNS, file = "data/KmerMotifRelations/sixmer_RBNS.txt")
-#write.table(sevenmer_RBNS, file = "data/KmerMotifRelations/sevenmer_RBNS.txt")
+#write.table(fourmer_cisbpRNA, file = "mydata/KmerMotifRelations/fourmer_cisbpRNA.txt")
+#write.table(fivemer_cisbpRNA, file = "mydata/KmerMotifRelations/fivemer_cisbpRNA.txt")
+#write.table(sixmer_cisbpRNA, file = "mydata/KmerMotifRelations/sixmer_cisbpRNA.txt")
+#write.table(sevenmer_cisbpRNA, file = "mydata/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+
+#write.table(fourmer_RBNS, file = "mydata/KmerMotifRelations/fourmer_RBNS.txt")
+#write.table(fivemer_RBNS, file = "mydata/KmerMotifRelations/fivemer_RBNS.txt")
+#write.table(sixmer_RBNS, file = "mydata/KmerMotifRelations/sixmer_RBNS.txt")
+#write.table(sevenmer_RBNS, file = "mydata/KmerMotifRelations/sevenmer_RBNS.txt")
+
+#fourmer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fourmer_cisbpRNA.txt")
+#fivemer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fivemer_cisbpRNA.txt")
+#sixmer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sixmer_cisbpRNA.txt")
+#sevenmer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+
+#fourmer_RBNS <- read.table(file = "mydata/KmerMotifRelations/fourmer_RBNS.txt")
+#fivemer_RBNS <- read.table(file = "mydata/KmerMotifRelations/fivemer_RBNS.txt")
+#sixmer_RBNS <- read.table(file = "mydata/KmerMotifRelations/sixmer_RBNS.txt")
+#sevenmer_RBNS <- read.table(file = "mydata/KmerMotifRelations/sevenmer_RBNS.txt")
+
+#usethis::use_data(fourmer_cisbpRNA, fivemer_cisbpRNA, sixmer_cisbpRNA, sevenmer_cisbpRNA, fourmer_RBNS, fivemer_RBNS, sixmer_RBNS, sevenmer_RBNS, internal = TRUE, overwrite = TRUE)
 
 ```
 
@@ -564,28 +699,28 @@ estimate_Motif_from_Kmer <- function(enriched_kmers, motif_set){
   }
   
   if (k == 4 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fourmer_cisbpRNA.txt")
   }
   else if (k == 4 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_RBNS.txt")
+    motif_by_kmer <- RNAreachr:::fourmer_RBNS
   }
   else if (k == 5 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fivemer_cisbpRNA.txt")
   }
   else if (k == 5 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_RBNS.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fivemer_RBNS.txt")
   }
   else if (k == 6 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sixmer_cisbpRNA.txt")
   }
   else if (k == 6 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_RBNS.txt")
+    motif_by_kmer <- RNAreachr:::sixmer_RBNS
   }
   else if (k == 7 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sevenmer_cisbpRNA.txt")
   }
   else if (k == 7 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_RBNS.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sevenmer_RBNS.txt")
   }
 
   ##calculate probablility of matching...
@@ -594,13 +729,13 @@ estimate_Motif_from_Kmer <- function(enriched_kmers, motif_set){
     dplyr::as_tibble() %>% 
    dplyr:: mutate(enriched = rowSums(dplyr::select(., enriched_kmers)), 
            all = rowSums(dplyr::select(., -motif))) %>% 
-    dplyr::separate(motif, into = c("RBP", "motif", "logo", "tile"), sep = "_", fill = "right") %>% 
+    tidyr::separate(motif, into = c("RBP", "motif", "logo", "tile"), sep = "_", fill = "right") %>% 
     dplyr::group_by(RBP, motif, logo) %>% 
     dplyr::summarize(enriched = sum(enriched), all = sum(all)) %>% 
     dplyr::mutate(p_val = phyper(enriched-1, length(enriched_kmers), (4^k)-length(enriched_kmers), all, lower.tail = FALSE), 
            p_adj = p.adjust(p_val, method = "BH", n = nrow(.)))  %>% 
     dplyr::arrange(p_adj) %>% 
-    dplyr::unite(RBP, motif, logo, col = "motif", sep = "_")
+    tidyr::unite(RBP, motif, logo, col = "motif", sep = "_")
 
 }
 
@@ -624,15 +759,15 @@ FMR1_motif_top <- FMR1_motif %>% ungroup() %>%  filter(log2FC > 0) %>% arrange(d
 FMR1_motif_bottom <- FMR1_motif %>% ungroup() %>%  filter(log2FC < 0) %>% arrange(desc(log2FC), desc(p_adj)) %>% mutate(rank = c((nrow(FMR1_motif_top)+1):(nrow(.)+nrow(FMR1_motif_top))))
 FMR1_motif <- rbind(FMR1_motif_top, FMR1_motif_bottom)
 
-full_join(FMR1_RBNS, FMR1_RBNS_estimate, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+full_join(FMR1_RBNS, FMR1_RBNS_estimate, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + ggpubr::stat_cor(method = "spearman") 
 
-FMR1_cisbpRNA_estimate %>% separate(motif, into = c("RBP_name", "motif", "extra"), sep = "_") %>% unite(motif, extra, col = "motif") %>% full_join(., FMR1_motif, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+FMR1_cisbpRNA_estimate %>% separate(motif, into = c("RBP_name", "motif", "extra"), sep = "_") %>% unite(motif, extra, col = "motif") %>% full_join(., FMR1_motif, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + ggpubr::stat_cor(method = "spearman") 
 
 ##directly comparing adjusted p values
 
-FMR1_cisbpRNA_estimate %>% separate(motif, into = c("RBP", "motif"), extra = "merge") %>% dplyr::select(RBP, motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., FMR1_motif) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+FMR1_cisbpRNA_estimate %>% separate(motif, into = c("RBP", "motif"), extra = "merge") %>% dplyr::select(RBP, motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., FMR1_motif) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + ggpubr::stat_cor(method = "spearman") 
 
-FMR1_RBNS_estimate %>% dplyr::select(motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., FMR1_RBNS) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+FMR1_RBNS_estimate %>% dplyr::select(motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., FMR1_RBNS) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + ggpubr::stat_cor(method = "spearman") 
 
 
 ##phyper overlap
