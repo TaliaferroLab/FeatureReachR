@@ -20,61 +20,78 @@ library(RNAreachR)
 ```
 
 # Getting started with RNAreachR
-  RNAreachR is a package focused on comparing sets of RNA sequence
-It is expected that users will have some set of sequences that they are expecially interested in.
+  RNAreachR is a package focused on comparing sets of RNA sequence.
+It is expected that users will have some set of sequences that they are experimentally interested in.
 These are usually defined by some sort of RNA sequencing experiment.
-For example, significantly differentially expressed genes.
+For example, significantly differentially expressed genes between conditions.
 
-  It is most useful to define interesting transcripts as transcripts that are highly expressed in your experimental system.
-These transcripts can then be used to extract interesting sequence from the genome.
+  It is most useful to define interesting sets of sequences as transcripts that are highly expressed in your experimental system.
+Transcript IDs can then be used to extract interesting sequence from the genome.
 
   However, often an experiment reveals an interesting set of genes and returning to the expression data may not be possible.
 This vignette is designed to help users go from a set of genes they are interested in to sequence.
+
+  If you have already have a list of interesting transcripts, you can skip the poriton of this vignett titled: "Converting genes to transcripts in a meaningful way" and directly extract your sequence of interest.
 
 This aspect of RNAreachR is currently only compatible with Gencode human and mouse data.
 
 ##Reading in Gencode gffs and filtering them
   In this vignette we will work with some example mouse data from an RNA sequencing experiment.
-First, we will need the mouse annotations from gencode.
+First, we will need the mouse genome annotations from gencode.
 The most recent version can be downloaded from here: 
+
 <https://www.gencodegenes.org/mouse/>
-This gff file contains the positional information for every gene, transcript, UTR and exon in the mouse genome.
+
+This genome gff file contains the positional information for every gene, transcript, UTR and exon in the mouse genome.
 Because we aren't usually interested in every transcript, will first filter this file using `filter_Tx`
 
 ```{r, get gffs and filter}
-mm_filtered_TxDb <- filter_Tx("C:/Users/rgoer/Documents/UTRtools/mydata/Gencodedat/gencode.vM20.annotation.gff3.gz")
+#Build genome gff into TxDb object and exclude low confidence transcripts
+mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"))
 mm_filtered_TxDb
 ```
   `filter_Tx` creates a TxDb object. 
-These objects create gene models that make accessing transcripts associated with genes very simple.
+These objects create gene models that make accessing sequence associated with genes very simple.
 It further models coding regions, UTRs and all exons.
+
 See <https://www.rdocumentation.org/packages/GenomicFeatures/versions/1.24.4/topics/TxDb-class> for more information about TxDb objects.
+
   `mm_filtered_TxDb` contains ~68,000 transcripts from the mouse genome. Using `filter_Tx` we have excluded all 
-low confidence transcripts. We recommend this as many transcripts are annotated with very little evidence that they truely exist.
+low confidence transcripts. We recommend this as many transcripts are annotated with very little evidence that they truely exist however, setting `filter == FALSE` will create a TxDb object with all features.
+
 `filter_Tx` can also filter out non-coding transcripts. However, in this vignette we are still interested in non-coding RNAs so we will not add `protein.coding = TRUE`.
 
 ##Converting genes to transcripts in a meaningful way
-  In many experiments, a group of genes may become interesting for a variety of reasons.
-The `case_genes` in this vignette are interesting because their localization in neuronal cells relies on FMRP expression.
-These genes met the many many required thresholds from a previous analysis to be considered interesting.
+  In many experiments, a group of genes may become interesting for an infinite of reasons.
+  
+  The `case_genes` in this vignette are interesting because their localization in neuronal cells relies on FMRP expression.
+These genes met the many required thresholds from a previous analysis to be considered interesting.
+
 `ctrl_genes` contains every other "uninteresting" gene expressed in the neuronal cells.
-These gene sets are very different lengths.
+These gene sets are very different lengths, `case_genes` has 31 genes where `ctrl_genes` has 7,872 genes.
+
+  When creating your own case and control gene lists, they should be mutually exclusive lists of ensembl gene IDs.
+
   Because many different transcripts or isoforms are present within a single gene, we must determine which transcript we want to retrieve sequence from to best represent the genes.
 It is best to use expression data to determine the most expressed transcript for each gene.
 If that is not an option, we can select transcripts based on their lengths.
+
 Often, the longest transcript or the most median length transcript is selected.
-  `make_longest_df` and `make_median_df` use the filtered TxDb object to create dataframe that relate Ensembl gene IDs with the longest or most median length transcript. Further, this dataframe also contains the transcript with the longest coding region (CDS) or longest 5' or 3'UTR. 
-  The dataframe generated by `make_longest_df` can be then be used to translate a gene list into a transcript list where each transcript has the longest feature for that gene. `gene2Tx` facilitates this translation and which sequence feature length is considered (whole transcript, CDS, 5'UTR or 3'UTR).
+  `make_longest_df` and `make_median_df` use the filtered TxDb object to create dataframe that relate Ensembl gene IDs with the longest or most median length transcript. Further, this dataframe also contains the transcript with the longest coding region (CDS), 5' or 3'UTR. 
+  
+  The dataframe generated by `make_longest_df` can be then be used to translate a gene list into a transcript list where each transcript has the longest feature for that gene. `gene2Tx` facilitates this translation and which sequence feature length is considered (whole transcript, CDS, 5' or 3'UTR).
   
 ```{r, gene list to tx list}
-#read in example gene lists
-case_genes <- read.table("C:/Users/rgoer/Documents/UTRtools/mydata/example_case_genes.txt") %>% dplyr::pull(., x) %>% as.character()
-ctrl_genes <- read.table("C:/Users/rgoer/Documents/UTRtools/mydata/example_ctrl_genes.txt") %>% dplyr::pull(., x) %>% as.character()
+#example case_gene list
+print(case_genes)
 
 #convert to transcript lists
 longest_mm <- make_longest_df(mm_filtered_TxDb)
 case_longest_tx <- gene2Tx(longest_mm, case_genes, "UTR3")
 ctrl_longest_tx <- gene2Tx(longest_mm, ctrl_genes, "UTR3")
+
+#example case_transcript list
+print(case_longest_tx)
 
 #Alternatively, median length transcripts could be used
 median_mm <- make_median_df(mm_filtered_TxDb)
@@ -83,26 +100,34 @@ ctrl_median_tx <- gene2Tx(median_mm, ctrl_genes, "UTR3")
 ```
 The resulting transcript list may become shorter than the original gene list. 
 This is because some genes only contain non-coding transcripts which lack CDS, 5'UTR and 3'UTR sequence.
-## Exporting sequences of interesting transcripts
-  Now we have both the filtered genome annotation TxDb object and transcript lists. We can extract the sequences of the transcripts we find interesting and store them in either fasta files, gff3 files or both.
+
+##Exporting sequences of interesting transcripts
+  Now we have both the filtered genome annotation TxDb object and transcript lists. We can extract the sequences of the transcripts we find interesting and store them in either fasta files, gff3 files or both. These will be inputs for other RNAreachR functions.
+  
 ```{r, tx list to sequence}
-getTxOut(mm_filtered_TxDb, case_longest_tx, "UTR3", "C:/Users/rgoer/Documents/UTRtools/mydata/example_case", "both")
-getTxOut(mm_filtered_TxDb, ctrl_longest_tx, "UTR3", "C:/Users/rgoer/Documents/UTRtools/mydata/example_ctrl", "both")
+#write fasta and gff3 files of 3'UTRs for each transcript list
+getTxOut(mm_filtered_TxDb, case_longest_tx, "UTR3", "example_case_longest_UTR3", "both")
+getTxOut(mm_filtered_TxDb, ctrl_longest_tx, "UTR3", "example_ctrl_longest_UTR3", "both")
 ```
-  With the `getTxOut` output files generated, the true function of RNAreachR can be used.
-These functions which rely on case and control fastas or case and control gff3 files will be detailed in a different vignette.
+  
+  With the `getTxOut` output files generated, you are ready to compare sequence characteristics with RNAreachR.
+RNAreachR functions which rely on case and control fastas or case and control gff3 files will be detailed in a different vignette.
+
 ```{r, reading in fastas}
-case_longest <- Biostrings::readDNAStringSet("C:/Users/rgoer/Documents/UTRtools/mydata/example_case.fa")
-ctrl_longest <- Biostrings::readDNAStringSet("C:/Users/rgoer/Documents/UTRtools/mydata/example_ctrl.fa")
-case_longest
-ctrl_longest
+#ready fastas into R as DNAStringSet Objects
+case_longest_UTR3 <- Biostrings::readDNAStringSet(system.file("extdata", "example_case_longest_UTR3.fa", package = "RNAreachR"))
+ctrl_longest_UTR3 <- Biostrings::readDNAStringSet(system.file("extdata", "example_ctrl_longest_UTR3.fa", package = "RNAreachR"))
+#example DNAStringSet objects
+case_longest_UTR3
+ctrl_longest_UTR3
 ```
 
 ```{r, reading in gffs}
-case_gff <- rtracklayer::import("C:/Users/rgoer/Documents/UTRtools/mydata/example_case.gff3")
-ctrl_gff <- rtracklayer::import("C:/Users/rgoer/Documents/UTRtools/mydata/example_ctrl.gff3")
+#read gff3s into R
+case_gff <- rtracklayer::import(system.file("extdata", "example_case_longest_UTR3.gff3", package = "RNAreachR"))
+ctrl_gff <- rtracklayer::import(system.file("extdata", "example_ctrl_longest_UTR3.gff3", package = "RNAreachR"))
+#example gff
 case_gff
-
 ```
 
 

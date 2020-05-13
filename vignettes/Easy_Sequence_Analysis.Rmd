@@ -1,0 +1,207 @@
+---
+title: "Easy_Sequence_Analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Easy_Sequence_Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+devtools::load_all(".") #this should get removed eventually
+library(RNAreachR)
+```
+
+```{r, plot_wrappers}
+GC_plot <- function(case, ctrl){
+  case_GC <- get_GC(case) %>% mutate(group = "case")
+  ctrl_GC <- get_GC(ctrl) %>% mutate(group = "ctrl")
+  GC <- rbind(case_GC, ctrl_GC)
+  GC %>% ggplot2::ggplot(aes(x = group, y = GC, fill = group)) +
+    ggplot2::geom_violin() + 
+    ggplot2::geom_boxplot(width = 0.25) + 
+    cowplot::theme_cowplot() + 
+    ggpubr::stat_compare_means(method = "wilcox") +
+    ggplot2::guides(fill = FALSE) + 
+    ggplot2::labs(x = "", y = "Percent GC Content")
+}
+
+kmer_plot <- function(kmer_stats){
+  p <- kmer_stats %>% dplyr::mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot2::ggplot(aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) + 
+    ggplot2::geom_point() + 
+    ggplot2::scale_color_manual(values = c("Red", "Black")) + 
+    ggplot2::scale_alpha_manual(values = c(1, 0.1)) + 
+    ggplot2::geom_text(data = subset(p, sig == "0.05"), aes(label = kmer), nudge_y = 1) + 
+    cowplot::theme_cowplot() 
+}
+RBP_esimate_plot <- function(RBP_stats){
+  p <- RBP_stats %>% dplyr::mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot2::ggplot(aes(x = log2((enriched/all) + 1), y = -log(p_adj), alpha = sig, col = sig)) + 
+    ggplot2::geom_point() + 
+    ggplot2::scale_color_manual(values = c("Red", "Black")) + 
+    ggplot2::scale_alpha_manual(values = c(1, 0.1)) + 
+    ggplot2::geom_text(data = subset(p, sig == "0.05"), aes(label = motif), nudge_y = 1) + 
+    cowplot::theme_cowplot() 
+}
+cisbp_plot <- function(RBP_stats){
+  p <- RBP_stats %>% dplyr::mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot2::ggplot(aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) + 
+    ggplot2::geom_point() + 
+    ggplot2::scale_color_manual(values = c("Red", "Black")) + 
+    ggplot2::scale_alpha_manual(values = c(1, 0.1)) + 
+    ggplot2::geom_text(data = subset(p, sig == "0.05"), aes(label = paste(RBP_name, motif, sep = "_")), nudge_y = 1) +
+    cowplot::theme_cowplot() 
+}
+RBNS_plot <- function(RBP_stats){
+  p <- RBP_stats %>% dplyr::mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
+  p %>% ggplot2::ggplot(aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) + 
+    ggplot2::geom_point() + 
+    ggplot2::scale_color_manual(values = c("Red", "Black")) + 
+    ggplot2::scale_alpha_manual(values = c(1, 0.1)) + 
+    ggplot2::geom_text(data = subset(p, sig == "0.05"), aes(label = motif), nudge_y = 1) + 
+    cowplot::theme_cowplot() 
+}
+```
+## Starting with some Sequence
+In this experiment, RBFOX2, a splicing factor, was knocked out. Several introns become enhanced, or preferentially retained due to the absence of RBFOX2. The fastas below contatain the sequences downstream from enhanced introns (case) or all other introns (ctrl).
+
+```{r, load in RBFOX2 fastas}
+case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "RNAreachR"))
+ctrl <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "RNAreachR"))
+
+```
+## Easy length and GC comparisons
+
+```{r, GC comparison}
+GC_compare(case,ctrl)
+
+```
+## Comparing kmers can reveal sequences over-represented in the case fasta
+Using these fastas, we can identify sixmers that are over-represented downstream of enhanceed introns as compared to downstream sequence from all other introns. 
+
+```{r,  enriched kmers}
+#identify enriched kmers
+kmer_stats <- kmer_compare(case, ctrl, 6) 
+
+print(kmer_stats)
+
+kmer_plot(kmer_stats) #should probably add options to change cutoff value...
+
+
+##enriched kmers are of particular interest.
+enriched_kmers <- kmer_stats %>% 
+  dplyr::filter(p_adj < 0.05, log2FC > 0) %>% 
+  dplyr::pull(., kmer) %>% 
+  as.character()
+
+```
+enriched kmers are of particular interest as they can reveal over-represented RBP binding sites (motifs)
+
+
+## Collapsing these enriched kmers into similar groups is more useful when more kmers are enriched... 
+
+```{r, cluster kmers}
+#need function still
+
+##Considering all kmers together we can create this consensus motif:
+Biostrings::consensusMatrix(DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+
+
+##We can further group these kmers to get more specific consensus motifs:
+d  <- adist(enriched_kmers) #this is Levenshtein distance 
+rownames(d) <- enriched_kmers
+hc <- hclust(as.dist(d))
+plot(hc)
+#using the above plot, users can define k as they see fit or possibly define some default based on string distance?
+rect.hclust(hc, k=2, border = "red")
+df <- data.frame(kmer = enriched_kmers, group = cutree(hc, k = 2)) %>% dplyr::as_tibble()
+
+
+##The below motifs best represent the enriched kmers
+Biostrings::consensusMatrix(Biostrings::DNAStringSet(pull(filter(df, group == 1), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+Biostrings::consensusMatrix(Biostrings::DNAStringSet(pull(filter(df, group == 2), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+
+
+```
+
+## We can use the enriched sixmers to estimate RBP binding sites
+
+```{r, estimate RBP binding from kmers}
+#generate RBNS motif estimates from enriched kmers
+RBNS_estimate <- estimate_Motif_from_Kmer(enriched_kmers, "RBNS") 
+RBNS_estimate
+cisbp_estimate <- estimate_Motif_from_Kmer(enriched_kmers, "cisbpRNA") 
+cisbp_estimate
+
+```
+
+```{r, actual PWM scanning}
+#RBFOX2_RBNS_compare <- RBNS_compare("data/RBNSdat/RBNS_PWMs", case, ctrl) 
+#RBFOX2_cisbpRNA_compare <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", case, ctrl) #16.2min
+
+#write.table(RBFOX2_RBNS_compare, "data/RBFOX2/RBFOX2_RBNS_compare.txt")
+#write.table(RBFOX2_cisbpRNA_compare, "data/RBFOX2/RBFOX2_cisbpRNA_compare.txt")
+
+RBFOX2_RBNS_compare <- read.table("data/RBFOX2/RBFOX2_RBNS_compare.txt") %>% dplyr::as_tibble()
+RBFOX2_cisbpRNA_compare <- read.table("data/RBFOX2/RBFOX2_cisbpRNA_compare.txt") %>% dplyr::as_tibble()
+
+
+RBNS_estimate <- RBNS_estimate %>% dplyr::arrange(p_adj) %>% dplyr::mutate(est_rank = c(1:nrow(.)))
+cisbp_estimate <- cisbp_estimate %>% dplyr::arrange(p_adj) %>% dplyr::mutate(est_rank = c(1:nrow(.)))
+
+RBFOX2_RBNS_compare %>% dplyr::as_tibble()
+RBFOX2_cisbpRNA_compare %>% dplyr::as_tibble() 
+
+
+
+##compare to direct motif scanning output:
+##Ranked on adjusted p values and log2FC (for motif scan only)
+##problematic because most of estimate is ranked alphabetically (besides the first 3)
+RBFOX2_RBNS_top <- RBFOX2_RBNS_compare %>% ungroup() %>%  filter(log2FC > 0) %>% arrange(desc(log2FC), p_adj) %>% mutate(rank = c(1:nrow(.)))
+RBFOX2_RBNS_bottom <- RBFOX2_RBNS_compare %>% ungroup() %>%  filter(log2FC < 0) %>% arrange(desc(log2FC), desc(p_adj)) %>% mutate(rank = c((nrow(RBFOX2_RBNS_top)+1):(nrow(.)+nrow(RBFOX2_RBNS_top))))
+RBFOX2_RBNS_compare <- rbind(RBFOX2_RBNS_top, RBFOX2_RBNS_bottom)
+
+RBFOX2_cisbpRNA_top <- RBFOX2_cisbpRNA_compare %>% ungroup() %>%  filter(log2FC > 0) %>% arrange(desc(log2FC), p_adj) %>% mutate(rank = c(1:nrow(.)))
+RBFOX2_cisbpRNA_bottom <- RBFOX2_cisbpRNA_compare %>% ungroup() %>%  filter(log2FC < 0) %>% arrange(desc(log2FC), desc(p_adj)) %>% mutate(rank = c((nrow(RBFOX2_cisbpRNA_top)+1):(nrow(.)+nrow(RBFOX2_cisbpRNA_top))))
+RBFOX2_cisbpRNA_compare <- rbind(RBFOX2_cisbpRNA_top, RBFOX2_cisbpRNA_bottom)
+
+full_join(RBFOX2_RBNS_compare, RBNS_estimate, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+cisbp_estimate %>% separate(motif, into = c("RBP_name", "motif", "extra"), sep = "_") %>% unite(motif, extra, col = "motif") %>% full_join(., RBFOX2_cisbpRNA_compare, by = "motif") %>% ggplot(aes(x = rank, y = est_rank)) + geom_point() + geom_smooth(aes(x = rank, y = est_rank), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+##plotted adjusted pval to adjusted pval.
+##limited because enriched/depleted not considered what so ever.
+
+cisbp_estimate %>% separate(motif, into = c("RBP", "motif"), extra = "merge") %>% dplyr::select(RBP, motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., RBFOX2_cisbpRNA_compare) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+RBNS_estimate %>% dplyr::select(motif, p_val, p_adj) %>% rename(p_val = "estimated_p_val", p_adj = "estimated_p_adj") %>% full_join(., RBFOX2_RBNS_compare) %>% ggplot(aes(x = -log(estimated_p_adj), y = -log(p_adj))) + geom_point() + geom_smooth(aes(x = -log(estimated_p_adj), y = -log(p_adj)), method = lm, se = FALSE, inherit.aes = FALSE) + theme_cowplot() + stat_cor(method = "spearman") 
+
+##phyper overlap
+est_hits <- RBNS_estimate %>%  filter(p_adj < 0.05) %>% pull(., motif)
+length(est_hits)
+scan_hits <- RBFOX2_RBNS_compare %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., motif)
+length(scan_hits)
+est_hits %in% scan_hits %>% sum()
+
+phyper(sum(est_hits %in% scan_hits)-1, length(scan_hits), nrow(RBFOX2_RBNS_compare)-length(scan_hits), length(est_hits), lower.tail = FALSE)
+
+
+
+est_hits <- cisbp_estimate %>% separate(motif, into = c("RBP_name", "motif"), extra = "merge") %>% filter(p_adj < 0.05) %>% pull(., motif)
+length(est_hits)
+scan_hits <- RBFOX2_cisbpRNA_compare %>% filter(p_adj < 0.05, log2FC > 0) %>% pull(., motif)
+length(scan_hits)
+est_hits %in% scan_hits %>% sum()
+
+phyper(sum(est_hits %in% scan_hits)-1, length(scan_hits), nrow(RBFOX2_cisbpRNA_compare)-length(scan_hits), length(est_hits), lower.tail = FALSE)
+
+
+```
