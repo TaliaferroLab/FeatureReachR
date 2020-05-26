@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
 ```{r setup}
 devtools::load_all(".") #this should get removed eventually
 library(RNAreachR)
+library(tidyverse) # required for pipes, required for aes() to work without explicit ggplot2::aes call, etc.
 ```
 
 ```{r, plot_wrappers}
@@ -85,7 +86,7 @@ GC_compare(case,ctrl)
 
 ```
 ## Comparing kmers can reveal sequences over-represented in the case fasta
-Using these fastas, we can identify sixmers that are over-represented downstream of enhanceed introns as compared to downstream sequence from all other introns. 
+Using these fastas, we can identify sixmers that are over-represented downstream of enhanced introns as compared to downstream sequence from all other introns. 
 
 ```{r,  enriched kmers}
 #identify enriched kmers
@@ -112,7 +113,7 @@ enriched kmers are of particular interest as they can reveal over-represented RB
 #need function still
 
 ##Considering all kmers together we can create this consensus motif:
-Biostrings::consensusMatrix(DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+Biostrings::consensusMatrix(Biostrings::DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
 
 
 ##We can further group these kmers to get more specific consensus motifs:
@@ -136,9 +137,9 @@ Biostrings::consensusMatrix(Biostrings::DNAStringSet(pull(filter(df, group == 2)
 
 ```{r, estimate RBP binding from kmers}
 #generate RBNS motif estimates from enriched kmers
-RBNS_estimate <- estimate_Motif_from_Kmer(enriched_kmers, "RBNS") 
+RBNS_estimate <- estimate_motif_from_kmer(enriched_kmers, "RBNS") 
 RBNS_estimate
-cisbp_estimate <- estimate_Motif_from_Kmer(enriched_kmers, "cisbpRNA") 
+cisbp_estimate <- estimate_motif_from_kmer(enriched_kmers, "CISBPRNA_hs")
 cisbp_estimate
 
 ```
