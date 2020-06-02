@@ -49,7 +49,7 @@ GC_plot(case,ctrl)
 ```
 
 ## Comparing kmers can reveal sequences over-represented in the case fasta
-Using these fastas, we can identify sixmers that are over-represented downstream of enhanceed introns as compared to downstream sequence from all other introns. 
+Using these fastas, we can identify sixmers that are over-represented downstream of enhanced introns as compared to downstream sequence from all other introns. 
 
 There are three significantly over-represented sixmers and one under-represented sixmer downstream of enhanced introns.
 
@@ -79,7 +79,10 @@ The functions below would help understand more complex sets of enriched kmers.
 ##need function still!!!
 
 ##Considering all kmers together we can create this consensus motif:
+
 consensusMatrix(DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+Biostrings::consensusMatrix(Biostrings::DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
+
 
 
 ##We can further group these kmers to get more specific consensus motifs:
@@ -106,6 +109,7 @@ Because scanning for motifs in all of the case and ctrl fastas can take a long t
 RBNS_estimate <- estimate_motif_from_kmer(enriched_kmers, "RBNS") 
 RBNS_estimate
 motif_plot(RBNS_estimate)
+
 cisbp_estimate <- estimate_motif_from_kmer(enriched_kmers, "CISBPRNA_hs") 
 cisbp_estimate
 motif_plot(cisbp_estimate)
