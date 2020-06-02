@@ -23,7 +23,7 @@ library(cowplot)
 #getTxOut(mm_f_gff, FMR1_UTR3_tx, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1", "fa") 
 #getTxOut(mm_f_gff, FMR1_UTR3_tx_ctrl, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1_ctrl", "fa")
 
-longest_3UTR_FMR1 <-readDNAStringSet("mydata/FMR1dat/longest_3UTR_FMR1.fa") #30s
+longest_3UTR_FMR1 <- readDNAStringSet("mydata/FMR1dat/longest_3UTR_FMR1.fa") #30s
 longest_3UTR_FMR1_ctrl <- readDNAStringSet("mydata/FMR1dat/longest_3UTR_FMR1_ctrl.fa") #30s
   
 ```
@@ -85,7 +85,8 @@ kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
            case_tot = sum(case)-case) %>% 
     dplyr::rowwise() %>% 
    dplyr:: mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
-           p_adj = p.adjust(pval, method = "BH", 4^k))
+           p_adj = p.adjust(pval, method = "BH", 4^k)) %>% 
+    dplyr::arrange(p_adj)
   
   print("calculations complete.", quote = FALSE)
   
@@ -146,8 +147,7 @@ length_compare(longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 
 get_GC <- function(DNAStringSet){
   dplyr::as_tibble(data.frame(gene = names(DNAStringSet),
-                       GC = as.integer(Biostrings::letterFrequency(DNAStringSet, "GC")),
-                       length = Biostrings::width(DNAStringSet)))
+                       GC = Biostrings::letterFrequency(DNAStringSet, "GC")/ BioStrings::width(DNAStringSet)))
 }
 
 #This is similar to the last function but with GC content. I again am uncertain of the output.
@@ -380,14 +380,18 @@ FMR1_RBNS %>% arrange(p_adj)
 ```{r, custom PWM}
 #custom PWM lists should contain a list of named matrices where the name is unique, and the matrix columns represent positions, and the rows are the probability of each base "A", "C", "G", and "T".
 
-custom_PWM_by_gene <- function(PWM_list, DNAStringset){
+Motif_by_gene <- function(PWM_list, DNAStringset){
   
   print("Checking PWM data", quote = FALSE)
+  
+  if (typeof(PWM_list) != "list"){
+    stop("PWM_list must be a list")
+  }
   
   if (any(as.numeric(lapply(PWM_list, nrow)) != 4)){
     stop("Error: Ensure all PWM matricies have exactly 4 rows (\"A\", \"C\", \"G\" and \"T\")")
   }
-  motifs <- names(PWM_list) %>% as_tibble() %>% rename(value = "motif") %>% mutate(PWM = unname(PWM_list))
+  motifs <- names(PWM_list) %>% dplyr::as_tibble() %>% dplyr::rename("motif" = value) %>% dplyr::mutate(PWM = unname(PWM_list))
   
   print("Counting motif occurances...", quote = FALSE)
 
@@ -401,14 +405,18 @@ custom_PWM_by_gene <- function(PWM_list, DNAStringset){
   return(motif_by_gene)
 }
 
-custom_PWM_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
+Motif_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
   
   print("Checking PWM data", quote = FALSE)
+  
+  if (typeof(PWM_list) != "list"){
+    stop("PWM_list must be a list")
+  }
   
   if (any(as.numeric(lapply(PWM_list, nrow)) != 4)){
     stop("Error: Ensure all PWM matricies have exactly 4 rows (\"A\", \"C\", \"G\" and \"T\")")
   }
-  motifs <- names(PWM_list) %>% as_tibble() %>% rename(value = "motif") %>% mutate(PWM = unname(PWM_list))
+  motifs <- names(PWM_list) %>% dplyr::as_tibble() %>% dplyr::rename("motif" = value) %>% dplyr::mutate(PWM = unname(PWM_list))
   
   fisher <- function(a, b, c, d){
   mat <- matrix(c(a, b, c, d), nr = 2)
@@ -429,15 +437,21 @@ custom_PWM_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
     dplyr::rowwise() %>% 
     dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
              p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>% 
-    dplyr::select(motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj)
+    dplyr::select(motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj) %>% 
+    dplyr::arrange(p_adj)
 
   return(motifs)
   
+  print("All Finished.", quote = FALSE)
 }
 
 custom_PWM_list <- readRDS("mydata/example_custom_PWM_list")
 custom_PWM_by_gene(custom_PWM_list, longest_3UTR_FMR1)
 custom_PWM_compare(custom_PWM_list, longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
+
+RBNS_PWM <- RNAreachR::RBNS_PWM
+CISBPRNA_mm_PWM <- RNAreachR::CISBPRNA_PWM
+cisbp_new_res <- custom_PWM_compare(CISBPRNA_PWM, longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 
 ```
 
@@ -591,7 +605,7 @@ relate_Kmer_CisBPRNA <- function(k, motif_path, RBPinfo){
   return(motif_by_kmer)
 }
 
-relate_Kmer_custom_PWM <- function(k, PWM_list){
+relate_kmer_PWM <- function(k, PWM_list){
 
     ##make DNAStringSets for every kmer
   x <- c("T", "A", "C", "G")
@@ -641,43 +655,59 @@ relate_Kmer_custom_PWM <- function(k, PWM_list){
     tidyr::spread(kmer, value = value) %>% 
     dplyr::select(motif, dplyr::everything())            
   
-  motif_by_kmer <- motif_by_kmer %>% dplyr::as_tibble((. > 0) + 0) %>% dplyr::mutate(motif = .$motif)
+  motif_by_kmer <- motif_by_kmer %>% dplyr::mutate_if(is.numeric, ~1 * (. > 0))
 
   return(motif_by_kmer)
 }
 
 
-#fourmer_cisbpRNA <- relate_Kmer_CisBPRNA(4, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #3min
-#fivemer_cisbpRNA <- relate_Kmer_CisBPRNA(5, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #10min
-#sixmer_cisbpRNA <- relate_Kmer_CisBPRNA(6, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #26min
-#sevenmer_cisbpRNA <- relate_Kmer_CisBPRNA(7, "mydata/CisBPRNAdat/mm/pwms_all_motifs", "mydata/CisBPRNAdat/mm/RBP_Information_all_motifs.txt") #57min
+#fourmer_mm_cisbpRNA <- relate_Kmer_PWM(4, CISBPRNA_mm_PWM) #3min
+#fivemer_mm_cisbpRNA <- relate_Kmer_PWM(5, CISBPRNA_mm_PWM) #8min
+#sixmer_mm_cisbpRNA <- relate_Kmer_PWM(6, CISBPRNA_mm_PWM) #24min
+#sevenmer_mm_cisbpRNA <- relate_Kmer_PWM(7, CISBPRNA_mm_PWM) #60min
 
-#fourmer_RBNS <- relate_Kmer_RBNS(4, "mydata/RBNSdat/RBNS_PWMs") #1min
-#fivemer_RBNS <- relate_Kmer_RBNS(5, "mydata/RBNSdat/RBNS_PWMs") #3min
-#sixmer_RBNS <- relate_Kmer_RBNS(6, "mydata/RBNSdat/RBNS_PWMs") #8min
-#sevenmer_RBNS <- relate_Kmer_RBNS(7, "mydata/RBNSdat/RBNS_PWMs") #28min
+#fourmer_hs_cisbpRNA <- relate_Kmer_PWM(4, CISBPRNA_hs_PWM) #3min
+#fivemer_hs_cisbpRNA <- relate_Kmer_PWM(5, CISBPRNA_hs_PWM) #9min
+#sixmer_hs_cisbpRNA <- relate_Kmer_PWM(6, CISBPRNA_hs_PWM) #25min
+#sevenmer_hs_cisbpRNA <- relate_Kmer_PWM(7, CISBPRNA_hs_PWM) #60min
 
-#write.table(fourmer_cisbpRNA, file = "mydata/KmerMotifRelations/fourmer_cisbpRNA.txt")
-#write.table(fivemer_cisbpRNA, file = "mydata/KmerMotifRelations/fivemer_cisbpRNA.txt")
-#write.table(sixmer_cisbpRNA, file = "mydata/KmerMotifRelations/sixmer_cisbpRNA.txt")
-#write.table(sevenmer_cisbpRNA, file = "mydata/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+#fourmer_RBNS <- relate_Kmer_PWM(4, RBNS_PWM) #1min
+#fivemer_RBNS <- relate_Kmer_PWM(5, RBNS_PWM) #3min
+#sixmer_RBNS <- relate_Kmer_PWM(6, RBNS_PWM) #8min
+#sevenmer_RBNS <- relate_Kmer_PWM(7, RBNS_PWM) #28min
+
+
+#write.table(fourmer_mm_cisbpRNA, file = "mydata/KmerMotifRelations/fourmer_mm_cisbpRNA.txt")
+#write.table(fivemer_mm_cisbpRNA, file = "mydata/KmerMotifRelations/fivemer_mm_cisbpRNA.txt")
+#write.table(sixmer_mm_cisbpRNA, file = "mydata/KmerMotifRelations/sixmer_mm_cisbpRNA.txt")
+#write.table(sevenmer_mm_cisbpRNA, file = "mydata/KmerMotifRelations/sevenmer_mm_cisbpRNA.txt")
+
+#write.table(fourmer_hs_cisbpRNA, file = "mydata/KmerMotifRelations/fourmer_hs_cisbpRNA.txt")
+#write.table(fivemer_hs_cisbpRNA, file = "mydata/KmerMotifRelations/fivemer_hs_cisbpRNA.txt")
+#write.table(sixmer_hs_cisbpRNA, file = "mydata/KmerMotifRelations/sixmer_hs_cisbpRNA.txt")
+#write.table(sevenmer_hs_cisbpRNA, file = "mydata/KmerMotifRelations/sevenmer_hs_cisbpRNA.txt")
 
 #write.table(fourmer_RBNS, file = "mydata/KmerMotifRelations/fourmer_RBNS.txt")
 #write.table(fivemer_RBNS, file = "mydata/KmerMotifRelations/fivemer_RBNS.txt")
 #write.table(sixmer_RBNS, file = "mydata/KmerMotifRelations/sixmer_RBNS.txt")
 #write.table(sevenmer_RBNS, file = "mydata/KmerMotifRelations/sevenmer_RBNS.txt")
 
-#fourmer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fourmer_cisbpRNA.txt")
-#fivemer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fivemer_cisbpRNA.txt")
-#sixmer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sixmer_cisbpRNA.txt")
-#sevenmer_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+#fourmer_mm_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fourmer_mm_cisbpRNA.txt")
+#fivemer_mm_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fivemer_mm_cisbpRNA.txt")
+#sixmer_mm_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sixmer_mm_cisbpRNA.txt")
+#sevenmer_mm_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sevenmer_mm_cisbpRNA.txt")
+
+#fourmer_hs_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fourmer_hs_cisbpRNA.txt")
+#fivemer_hs_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/fivemer_hs_cisbpRNA.txt")
+#sixmer_hs_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sixmer_hs_cisbpRNA.txt")
+#sevenmer_hs_cisbpRNA <- read.table(file = "mydata/KmerMotifRelations/sevenmer_hs_cisbpRNA.txt")
 
 #fourmer_RBNS <- read.table(file = "mydata/KmerMotifRelations/fourmer_RBNS.txt")
 #fivemer_RBNS <- read.table(file = "mydata/KmerMotifRelations/fivemer_RBNS.txt")
 #sixmer_RBNS <- read.table(file = "mydata/KmerMotifRelations/sixmer_RBNS.txt")
 #sevenmer_RBNS <- read.table(file = "mydata/KmerMotifRelations/sevenmer_RBNS.txt")
 
-#usethis::use_data(fourmer_cisbpRNA, fivemer_cisbpRNA, sixmer_cisbpRNA, sevenmer_cisbpRNA, fourmer_RBNS, fivemer_RBNS, sixmer_RBNS, sevenmer_RBNS, internal = TRUE, overwrite = TRUE)
+#usethis::use_data(fourmer_mm_cisbpRNA, fivemer_mm_cisbpRNA, sixmer_mm_cisbpRNA, sevenmer_mm_cisbpRNA, fourmer_hs_cisbpRNA, fivemer_hs_cisbpRNA, sixmer_hs_cisbpRNA, sevenmer_hs_cisbpRNA, fourmer_RBNS, fivemer_RBNS, sixmer_RBNS, sevenmer_RBNS, internal = TRUE, overwrite = TRUE)
 
 ```
 
@@ -685,64 +715,81 @@ relate_Kmer_custom_PWM <- function(k, PWM_list){
 ##this should be faster than the full motif search by quite a lot.
 
 
-estimate_Motif_from_Kmer <- function(enriched_kmers, motif_set){
- 
-  if (length(unique(nchar(as.character(enriched_kmers)))) != 1){
+estimate_motif_from_kmer <- function(kmer_list, motif_set, custom_motif_by_kmer_matrix = NULL){
+  #infer k from kmer_list list.
+  if (length(unique(nchar(as.character(kmer_list)))) != 1){
     warning("kmers in kmer list are not the same length using the shortest kmer as k")
-    k = min(unique(nchar(as.character(enriched_kmers))))
+    k = min(unique(nchar(as.character(kmer_list))))
   }
   else
-    k = unique(nchar(as.character(enriched_kmers)))
+    k = unique(nchar(as.character(kmer_list)))
   
-  if (motif_set != "cisbpRNA" & motif_set != "RBNS"){
-    stop(paste("motif_set must be either \"cisbpRNA\" or \"RBNS\"", quote = FALSE))
+  #check motif_set input
+  if (motif_set != "CISBPRNA" & motif_set != "RBNS" & motif_set != "custom"){
+    stop(paste("motif_set must be either \"CISBPRNA\", \"RBNS\" or \"custom\"", quote = FALSE))
   }
   
-  if (k == 4 & motif_set == "cisbpRNA"){
+  #get appropriate motif_by_kmer
+  if (k == 4 & motif_set == "CISBPRNA"){
     motif_by_kmer <- read.table("mydata/KmerMotifRelations/fourmer_cisbpRNA.txt")
   }
   else if (k == 4 & motif_set == "RBNS"){
-    motif_by_kmer <- RNAreachr:::fourmer_RBNS
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fourmer_RBNS.txt")
+    #motif_by_kmer <- RNAreachr:::fourmer_RBNS
   }
-  else if (k == 5 & motif_set == "cisbpRNA"){
+  else if (k == 5 & motif_set == "CISBPRNA"){
     motif_by_kmer <- read.table("mydata/KmerMotifRelations/fivemer_cisbpRNA.txt")
   }
   else if (k == 5 & motif_set == "RBNS"){
     motif_by_kmer <- read.table("mydata/KmerMotifRelations/fivemer_RBNS.txt")
   }
-  else if (k == 6 & motif_set == "cisbpRNA"){
+  else if (k == 6 & motif_set == "CISBPRNA"){
     motif_by_kmer <- read.table("mydata/KmerMotifRelations/sixmer_cisbpRNA.txt")
   }
   else if (k == 6 & motif_set == "RBNS"){
-    motif_by_kmer <- RNAreachr:::sixmer_RBNS
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sixmer_RBNS.txt")
+    #motif_by_kmer <- RNAreachr:::sixmer_RBNS
   }
-  else if (k == 7 & motif_set == "cisbpRNA"){
+  else if (k == 7 & motif_set == "CISBPRNA"){
     motif_by_kmer <- read.table("mydata/KmerMotifRelations/sevenmer_cisbpRNA.txt")
   }
   else if (k == 7 & motif_set == "RBNS"){
     motif_by_kmer <- read.table("mydata/KmerMotifRelations/sevenmer_RBNS.txt")
   }
-
+  
+  if (motif_set == "custom" & is.null(custom_motif_by_kmer_matrix) == TRUE){
+    stop("A custom motif_by_kmer_matrix is required for estimating custom motif occurance from kmers \n
+         use ouput from relate_kmer_PWM()")
+  } else if (motif_set == "custom" & is.null(custom_motif_by_kmer_matrix) == FALSE){
+    motif_by_kmer <- custom_motif_by_kmer_matrix
+  }
+  
   ##calculate probablility of matching...
-
-  motif_by_kmer %>% 
+  
+  x <- c(1:nrow(motif_by_kmer))
+  motif_estimate <- motif_by_kmer %>% 
     dplyr::as_tibble() %>% 
-   dplyr:: mutate(enriched = rowSums(dplyr::select(., enriched_kmers)), 
-           all = rowSums(dplyr::select(., -motif))) %>% 
-    tidyr::separate(motif, into = c("RBP", "motif", "logo", "tile"), sep = "_", fill = "right") %>% 
-    dplyr::group_by(RBP, motif, logo) %>% 
-    dplyr::summarize(enriched = sum(enriched), all = sum(all)) %>% 
-    dplyr::mutate(p_val = phyper(enriched-1, length(enriched_kmers), (4^k)-length(enriched_kmers), all, lower.tail = FALSE), 
-           p_adj = p.adjust(p_val, method = "BH", n = nrow(.)))  %>% 
-    dplyr::arrange(p_adj) %>% 
-    tidyr::unite(RBP, motif, logo, col = "motif", sep = "_")
-
+    dplyr:: mutate(input_kmer = rowSums(dplyr::select(., kmer_list)), 
+                   all_kmer = rowSums(dplyr::select(., -motif)),
+                   tile = as.character(lapply(x, function(x) strsplit(as.character(motif_by_kmer$motif[x]), "_(?=[^_]+$)", perl=TRUE)[[1]][2])),
+                   motif = as.character(lapply(x, function(x) strsplit(as.character(motif_by_kmer$motif[x]), "_(?=[^_]+$)", perl=TRUE)[[1]][1]))) %>% 
+    dplyr::group_by(motif) %>% 
+    dplyr::summarize(input_kmer = sum(all_kmer), all_kmer = sum(input_kmer)) %>% 
+    dplyr::mutate(p_val = phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE), 
+                  p_adj = p.adjust(p_val, method = "BH", n = nrow(.)))  %>% 
+    dplyr::arrange(p_adj) 
+  
+  return(motif_estimate)
+  
 }
 
 FMR1_RBNS_estimate <- estimate_Motif_from_Kmer(pos_FMR1_kmer, "RBNS") #1sec
-FMR1_cisbpRNA_estimate <- estimate_Motif_from_Kmer(pos_FMR1_kmer, "cisbpRNA") #1sec
+FMR1_cisbpRNA_estimate <- estimate_Motif_from_Kmer(pos_FMR1_kmer, "CISBPRNA") #1sec
 
 ```
+
+## ALL a work in progress from here down
+## no more defined functions
 
 ```{r, compare RBP}
 FMR1_RBNS_estimate <- FMR1_RBNS_estimate %>% arrange(p_adj) %>% mutate(est_rank = c(1:nrow(.)))

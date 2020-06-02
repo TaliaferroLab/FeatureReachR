@@ -1,0 +1,22 @@
+#' cisbpRNA motif comparisions for RBFOX2 data
+#'
+#' This is example output of \code{PWM_compare} with the CISBPRNA_hs PWM list.
+#' Used in the easy sequence analysis vignette.
+#'
+#' @format A table
+#'  \describe{
+#'   \item{motif}{motif name with RBP name}
+#'   \item{case}{number of motif counts}
+#'   \item{ctrl}{number of motif counts}
+#'   \item{case_freq}{number of motif counts normalized to sequence length}
+#'   \item{ctrl_freq}{number of motif counts normalized to sequence length}
+#'   \item{case_tot}{the total of all other motif occurances}
+#'   \item{ctrl_tot}{the total of all other motif occurances}
+#'   \item{log2FC}{the log2 of case_freq / ctrl_freq}
+#'   \item{pval}{calculated via wilcox.test}
+#'   \item{p_adj}{Adjusted p-value by method = "BH"}
+#'   }
+#' @source output from \code{PWM_compare(RBFOX_case, RBFOX_ctrl, "CISBPRNA_hs")}
+#' in easy sequence analysis vignette.
+#'
+'RBFOX2_cisbpRNA_compare'

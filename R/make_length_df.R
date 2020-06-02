@@ -65,7 +65,7 @@ make_longest_df <- function(TxDb_gff){
                      UTR3 = dplyr::first(UTR3))
 
 }
-
+#' @export
 #' @describeIn make_length_df creates a dataframe of the
 #'   transcripts with the median length features for each gene in a TxDb object
 make_median_df <- function(TxDb_gff){

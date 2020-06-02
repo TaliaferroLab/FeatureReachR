@@ -17,7 +17,7 @@
 #' "GAGGAG", "GAGGGA", "GAGGGG", "GGAAGG", "GGAGGA", "GGAGGG", "GGGAGG")
 #' estimate_motif_from_kmer(enriched_sixmers, "RBNS")
 #' estimate_motif_from_kmer(enriched_sixmers, "custom", )
-#'
+#' @export
 estimate_motif_from_kmer <- function(kmer_list, motif_set, custom_motif_by_kmer_matrix = NULL){
   #infer k from kmer_list list.
   if (length(unique(nchar(as.character(kmer_list)))) != 1){

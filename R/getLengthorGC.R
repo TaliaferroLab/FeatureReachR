@@ -9,22 +9,24 @@
 #'   DNAStringSet object
 #' @seealso \code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
 #'   \code{\link[Biostrings]{letterFrequency}}
+#' @export
 #' @examples
 #' case_fasta <- Biostrings::readDNAStringSet("example_case.fa")
 #' get_length(case_fasta)
 #' get_GC(case_fasta)
-#' @export
 #' @describeIn retrieves the length of each sequence in a
 #'   DNAStringSet object and returns a dataframe.
 get_length <- function(DNAStringSet){
   dplyr::as_tibble(data.frame(gene = names(DNAStringSet),
                               length = Biostrings::width(DNAStringSet)))
 }
-
+#' @export
 #' @describeIn retrieves both the length and GC content of each
 #'   sequence in a DNAStringSet object and returns a dataframe.
 get_GC <- function(DNAStringSet){
-  dplyr::as_tibble(data.frame(gene = names(DNAStringSet),
-                              GC = as.integer(Biostrings::letterFrequency(DNAStringSet, "GC")),
-                              length = Biostrings::width(DNAStringSet)))
+  GC <- data.frame(gene = names(DNAStringSet),
+                   GC = Biostrings::letterFrequency(DNAStringSet, "GC") / Biostrings::width(DNAStringSet)) %>%
+    dplyr::as_tibble() %>%
+    dplyr::rename(GC = G.C)
+  return(GC)
 }

@@ -1,6 +1,6 @@
 ##gff-version 3
 ##source-version rtracklayer 1.42.2
-##date 2020-05-13
+##date 2020-06-02
 chr1	rtracklayer	mRNA	58900449	58903503	.	-	.	ID=mRNA1;Name=ENSMUST00000027186.11;
 chr1	rtracklayer	mRNA	93015464	93018456	.	-	.	ID=mRNA2;Name=ENSMUST00000171796.7;
 chr2	rtracklayer	mRNA	49758917	49774778	.	+	.	ID=mRNA3;Name=ENSMUST00000028102.13;

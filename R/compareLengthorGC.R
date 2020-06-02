@@ -41,7 +41,7 @@ length_compare <- function(caseDNAStringSet, ctrlDNAStringSet){
   data.frame(wilcox.p, mean_case, mean_ctrl, mean_FC, CliffDelta, lowerCD, upperCD)
 
 }
-
+#' @export
 #' @describeIn compares the average GC content of two different DNAStringSet
 #'   objects and returns a summary statistic table of the comparison.
 

@@ -15,7 +15,8 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-devtools::load_all(".") #this should get removed eventually
+library(Biostrings)
+library(rtracklayer)
 library(RNAreachR)
 ```
 
@@ -111,12 +112,13 @@ getTxOut(mm_filtered_TxDb, ctrl_longest_tx, "UTR3", "example_ctrl_longest_UTR3",
 ```
   
   With the `getTxOut` output files generated, you are ready to compare sequence characteristics with RNAreachR.
-RNAreachR functions which rely on case and control fastas or case and control gff3 files will be detailed in a different vignette.
+RNAreachR functions rely on case and control fastas or case and control gff3 files and will be detailed in a different vignette.
 
 ```{r, reading in fastas}
 #ready fastas into R as DNAStringSet Objects
-case_longest_UTR3 <- Biostrings::readDNAStringSet(system.file("extdata", "example_case_longest_UTR3.fa", package = "RNAreachR"))
-ctrl_longest_UTR3 <- Biostrings::readDNAStringSet(system.file("extdata", "example_ctrl_longest_UTR3.fa", package = "RNAreachR"))
+case_longest_UTR3 <- readDNAStringSet(system.file("extdata", "example_case_longest_UTR3.fa", package = "RNAreachR"))
+ctrl_longest_UTR3 <- readDNAStringSet(system.file("extdata", "example_ctrl_longest_UTR3.fa", package = "RNAreachR"))
+
 #example DNAStringSet objects
 case_longest_UTR3
 ctrl_longest_UTR3
@@ -124,8 +126,8 @@ ctrl_longest_UTR3
 
 ```{r, reading in gffs}
 #read gff3s into R
-case_gff <- rtracklayer::import(system.file("extdata", "example_case_longest_UTR3.gff3", package = "RNAreachR"))
-ctrl_gff <- rtracklayer::import(system.file("extdata", "example_ctrl_longest_UTR3.gff3", package = "RNAreachR"))
+case_gff <- import(system.file("extdata", "example_case_longest_UTR3.gff3", package = "RNAreachR"))
+ctrl_gff <- import(system.file("extdata", "example_ctrl_longest_UTR3.gff3", package = "RNAreachR"))
 #example gff
 case_gff
 ```

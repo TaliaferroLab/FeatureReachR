@@ -5,3 +5,4 @@
 mydata
 knit html
 inst/doc
+*.html

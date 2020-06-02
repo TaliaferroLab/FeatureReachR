@@ -35,5 +35,4 @@ enriched_sixmers <- c("AAGGAA", "ACACAC", "AGAAGG", "AGAGAG", "AGAGGG",
 "GAGGAG", "GAGGGA", "GAGGGG", "GGAAGG", "GGAGGA", "GGAGGG", "GGGAGG")
 estimate_motif_from_kmer(enriched_sixmers, "RBNS")
 estimate_motif_from_kmer(enriched_sixmers, "custom", )
-
 }
