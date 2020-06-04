@@ -21,6 +21,7 @@ library(RNAreachR)
 ```
 
 ## Starting with some Sequence
+
 In this experiment, RBFOX2, a splicing factor, was knocked out. Several introns become enhanced, or preferentially retained due to the absence of RBFOX2. The fastas below contatain the sequences downstream from enhanced introns (case) or all other introns (ctrl).
 
 ```{r, load in RBFOX2 fastas}
@@ -29,6 +30,7 @@ ctrl <- readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta"
 
 ```
 ## Easy length and GC comparisons
+
 Some of the easiest sequence characteristics to investigate are length and GC content.
 
 In reguards to length, we can see that these sequence lengths were defined as 200 nt long with some limits.
@@ -49,6 +51,7 @@ GC_plot(case,ctrl)
 ```
 
 ## Comparing kmers can reveal sequences over-represented in the case fasta
+
 Using these fastas, we can identify sixmers that are over-represented downstream of enhanced introns as compared to downstream sequence from all other introns. 
 
 There are three significantly over-represented sixmers and one under-represented sixmer downstream of enhanced introns.
@@ -73,36 +76,17 @@ enriched kmers are of particular interest as they can reveal over-represented RB
 
 
 ## Collapsing these enriched kmers into similar groups is more useful when more kmers are enriched... 
+
 With only three enriched kmers, we can easily tell that the sequence "GCATG" is present in all of them.
 The functions below would help understand more complex sets of enriched kmers.
+
 ```{r, cluster kmers}
-##need function still!!!
-
-##Considering all kmers together we can create this consensus motif:
-
-consensusMatrix(DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
-Biostrings::consensusMatrix(Biostrings::DNAStringSet(enriched_kmers), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
-
-
-
-##We can further group these kmers to get more specific consensus motifs:
-d  <- adist(enriched_kmers) #this is Levenshtein distance 
-rownames(d) <- enriched_kmers
-hc <- hclust(as.dist(d))
-plot(hc)
-#using the above plot, users can define k as they see fit or possibly define some default based on string distance?
-rect.hclust(hc, k=2, border = "red")
-df <- data.frame(kmer = enriched_kmers, group = cutree(hc, k = 2)) %>% as_tibble()
-
-
-##The below motifs best represent the enriched kmers
-#consensusMatrix(DNAStringSet(pull(filter(df, df$group == 1), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
-#consensusMatrix(DNAStringSet(pull(filter(df, df$group == 2), kmer)), as.prob = TRUE) %>% .[1:4,] %>% seqLogo::seqLogo()
-
+kmer2logo(enriched_kmers)
 
 ```
 
 ## We can use the enriched sixmers to estimate RBP binding sites
+
 Because scanning for motifs in all of the case and ctrl fastas can take a long time, we can use the enriched kmers to estimate RBP binding sites within the case seqences.
 ```{r, estimate RBP binding from kmers}
 #generate RBNS motif estimates from enriched kmers

@@ -68,28 +68,28 @@ estimate_Motif_from_Kmer <- function(enriched_kmers, motif_set){
   }
   
   if(k == 4 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fourmer_cisbpRNA.txt")
   }
   else if(k == 4 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fourmer_RBNS.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fourmer_RBNS.txt")
   }
   else if(k == 5 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fivemer_cisbpRNA.txt")
   }
   else if (k == 5 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/fivemer_RBNS.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/fivemer_RBNS.txt")
   }
   else if(k == 6 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sixmer_cisbpRNA.txt")
   }
   else if (k == 6 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sixmer_RBNS.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sixmer_RBNS.txt")
   }
   else if(k == 7 & motif_set == "cisbpRNA"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_cisbpRNA.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sevenmer_cisbpRNA.txt")
   }
   else if (k == 7 & motif_set == "RBNS"){
-    motif_by_kmer <- read.table("data/KmerMotifRelations/sevenmer_RBNS.txt")
+    motif_by_kmer <- read.table("mydata/KmerMotifRelations/sevenmer_RBNS.txt")
   }
 
   ##calculate probablility of matching...
@@ -217,8 +217,8 @@ RBNS_plot <- function(RBP_stats){
 ## In this experiment, RBFOX2, a splicing factor, was knocked out (I think). Several introns become enhanced (?) due to the absence of RBFOX2. The fastas below contatain the sequences downstream from enhanced introns and all other (unchanged) introns.
 
 ```{r, load in RBFOX2 fastas}
-case <- readDNAStringSet("data/RBFOX2/DownstreamIntron.Enhanced.fasta")
-ctrl <- readDNAStringSet("data/RBFOX2/DownstreamIntron.Control.fasta")
+case <- readDNAStringSet("mydata/RBFOX2/DownstreamIntron.Enhanced.fasta")
+ctrl <- readDNAStringSet("mydata/RBFOX2/DownstreamIntron.Control.fasta")
 
 ```
 
@@ -274,14 +274,14 @@ cisbp_estimate
 ```
 
 ```{r, actual PWM scanning}
-#RBFOX2_RBNS_compare <- RBNS_compare("data/RBNSdat/RBNS_PWMs", case, ctrl) #10.5min
-#RBFOX2_cisbpRNA_compare <- cisBPRNA_compare("data/CisBPRNAdat/mm/pwms_all_motifs", "data/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", case, ctrl) #16.2min
+#RBFOX2_RBNS_compare <- RBNS_compare("mydata/RBNSdat/RBNS_PWMs", case, ctrl) #10.5min
+#RBFOX2_cisbpRNA_compare <- cisBPRNA_compare("mydata/CisBPRNAdat/mm/pwms_all_motifs", "my/CisBPRNAdat/mm/RBP_Information_all_motifs.txt", case, ctrl) #16.2min
 
-#write.table(RBFOX2_RBNS_compare, "data/RBFOX2/RBFOX2_RBNS_compare.txt")
-#write.table(RBFOX2_cisbpRNA_compare, "data/RBFOX2/RBFOX2_cisbpRNA_compare.txt")
+#write.table(RBFOX2_RBNS_compare, "mydata/RBFOX2/RBFOX2_RBNS_compare.txt")
+#write.table(RBFOX2_cisbpRNA_compare, "mydata/RBFOX2/RBFOX2_cisbpRNA_compare.txt")
 
-RBFOX2_RBNS_compare <- read.table("data/RBFOX2/RBFOX2_RBNS_compare.txt") %>% as_tibble()
-RBFOX2_cisbpRNA_compare <- read.table("data/RBFOX2/RBFOX2_cisbpRNA_compare.txt") %>% as_tibble()
+RBFOX2_RBNS_compare <- read.table("mydata/RBFOX2/RBFOX2_RBNS_compare.txt") %>% as_tibble()
+RBFOX2_cisbpRNA_compare <- read.table("mydata/RBFOX2/RBFOX2_cisbpRNA_compare.txt") %>% as_tibble()
 
 
 RBNS_estimate <- RBNS_estimate %>% arrange(p_adj) %>% mutate(est_rank = c(1:nrow(.)))
