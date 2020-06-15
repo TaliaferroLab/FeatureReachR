@@ -14,13 +14,13 @@ Suggests:
     bedtools,
     bedops,
     tabix,
-    knitr,
-    rmarkdown,
     ggpubr,
     cowplot,
     seqLogo
 License: What license is it under?
 Imports:
+    knitr,
+    rmarkdown,
     BiocManager (>= 1.3.10),
     bedr (>= 1.0.7),
     dplyr (>= 0.8.5),
