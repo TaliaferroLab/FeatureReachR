@@ -33,6 +33,7 @@ Imports:
     stringr (>= 1.4.0),
     BSgenome.Mmusculus.UCSC.mm10 (>= 1.4.0),
     BSgenome.Hsapiens.NCBI.GRCh38 (>= 1.3.1000),
+    biocViews,
     devtools,
     ggseqlogo,
     tidyr,
