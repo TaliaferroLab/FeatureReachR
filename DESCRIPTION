@@ -37,6 +37,7 @@ Imports:
     devtools,
     ggseqlogo,
     tidyr,
+    tidyverse,
     tibble
 Encoding: UTF-8
 LazyData: true
