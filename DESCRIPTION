@@ -13,10 +13,7 @@ biocViews:
 Suggests:
     bedtools,
     bedops,
-    tabix,
-    ggpubr,
-    cowplot,
-    seqLogo
+    tabix
 License: What license is it under?
 Imports:
     knitr,
@@ -38,7 +35,10 @@ Imports:
     ggseqlogo,
     tidyr,
     tidyverse,
-    tibble
+    tibble,
+    ggpubr,
+    cowplot,
+    seqLogo
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.0
