@@ -54,8 +54,8 @@ kmer_compare <- function(caseDNAStringSet, ctrlDNAStringSet, k){
                   ctrl_tot = sum(ctrl)-ctrl,
                   case_tot = sum(case)-case) %>%
     dplyr::rowwise() %>%
-    dplyr:: mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
-                   p_adj = p.adjust(pval, method = "BH", 4^k)) %>%
+    dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot)) %>%
+    dplyr::mutate(p_adj = p.adjust(pval, method = "BH")) %>%
     dplyr::arrange(p_adj)
 
   print("calculations complete.", quote = FALSE)

@@ -22,24 +22,40 @@
 #' @export
 #' @describeIn Plots all kmers with their magnitude (log2FoldChange) and
 #'   significance
-kmer_plot <- function(kmer_stats){
-  p <- kmer_stats %>% dplyr::mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
-  p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
-    ggplot2::geom_point() +
-    ggplot2::scale_color_manual(values = c("Red", "Black")) +
-    ggplot2::scale_alpha_manual(values = c(1, 0.1)) +
-    ggplot2::geom_text(data = subset(p, sig == "0.05"), ggplot2::aes(label = kmer), nudge_y = 1) +
-    cowplot::theme_cowplot()
+kmer_plot <- function(kmer_stats, sig_cutoff = 0.05){
+  p <- kmer_stats %>% dplyr::mutate(sig = ifelse(p_adj < sig_cutoff, as.character(sig_cutoff), "ns"))
+  if (length(unique(p$sig)) == 2) {
+    p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
+      ggplot2::geom_point() +
+      ggplot2::scale_color_manual(values = c("Red", "Black")) +
+      ggplot2::scale_alpha_manual(values = c(1, 0.1)) +
+      ggplot2::geom_text(data = subset(p, sig == as.character(sig_cutoff)), ggplot2::aes(label = kmer), nudge_y = 1) +
+      cowplot::theme_cowplot()
+  } else {
+    p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
+      ggplot2::geom_point() +
+      scale_color_manual(values = "Black") +
+      scale_alpha_manual(values = 0.1) +
+      cowplot::theme_cowplot()
+    }
 }
 #' @export
 #' @describeIn Plots all motifs with their magnitude (log2FoldChange) and
 #'   significance.
-motif_plot <- function(RBP_stats){
-  p <- RBP_stats %>% dplyr::mutate(sig = ifelse(p_adj < 0.05, "0.05", "ns"))
-  p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
-    ggplot2::geom_point() +
-    ggplot2::scale_color_manual(values = c("Red", "Black")) +
-    ggplot2::scale_alpha_manual(values = c(1, 0.1)) +
-    ggplot2::geom_text(data = subset(p, sig == "0.05"), ggplot2::aes(label = motif), nudge_y = 1) +
-    cowplot::theme_cowplot()
+motif_plot <- function(RBP_stats, sig_cutoff = 0.05){
+  p <- RBP_stats %>% dplyr::mutate(sig = ifelse(p_adj < sig_cutoff, as.character(sig_cutoff), "ns"))
+  if (length(unique(p$sig)) == 2) {
+    p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
+      ggplot2::geom_point() +
+      ggplot2::scale_color_manual(values = c("Red", "Black")) +
+      ggplot2::scale_alpha_manual(values = c(1, 0.1)) +
+      ggplot2::geom_text(data = subset(p, sig == as.character(sig_cutoff)), ggplot2::aes(label = motif), nudge_y = 1) +
+      cowplot::theme_cowplot()
+  } else {
+    p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
+      ggplot2::geom_point() +
+      scale_color_manual(values = "Black") +
+      scale_alpha_manual(values = 0.1) +
+      cowplot::theme_cowplot()
+  }
 }

@@ -93,8 +93,8 @@ estimate_motif_from_kmer <- function(kmer_list, motif_set, custom_motif_by_kmer_
     dplyr::mutate(input_freq = input_kmer / length(kmer_list),
                   all_freq = (all_kmer - input_kmer) / (k^4 - length(kmer_list)),
                   log2FC = log2((input_freq/all_freq)+1),
-                  p_val = phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE),
-                  p_adj = p.adjust(p_val, method = "BH", n = nrow(.)))  %>%
+                  p_val = phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE)) %>%
+    dplyr::mutate(p_adj = p.adjust(p_val, method = "BH"))  %>%
     dplyr::arrange(p_adj)
 
   return(motif_estimate)

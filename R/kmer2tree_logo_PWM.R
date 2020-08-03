@@ -9,7 +9,7 @@
 #' @param title string for plot titles defaults to no title.
 #' @return a tree, seqotif plots or a named list of PWMs
 #' @seealso
-#' \code{kmer_compare}, \code{\link[ggseqlogo]{ggseqlogo}}
+#' \code{kmer_compare}, \code{\link[ggseqlogo]{ggseqlogo}}, \code{\link[msa]{msa}}
 #' @examples
 #' enriched_sixmers <- c("AAGGAA", "ACACAC", "AGAAGG", "AGAGAG", "AGAGGG",
 #' "AGGAAG", "AGGAGG", "AGGGAG", "CACACA", "GAAGGA", "GAGAAG", "GAGAGA",
@@ -26,25 +26,41 @@ kmer2logo <- function(kmers, title = ""){
   d  <- adist(kmers) #this is Levenshtein distance
   rownames(d) <- kmers
   hc <- hclust(as.dist(d))
-  plot(hc, hang = -1, main = title, xlab = "", sub = "")
 
-  if (max(hc$height) <= 2){
+  num_clust <- length(unique(cutree(hc,h = 2.5)))
+  num_max_members <- cutree(hc,h = 2.5) %>%
+    as_tibble(rownames = "kmer") %>%
+    group_by(value) %>%
+    summarize(n=n(), .groups = "drop") %>%
+    pull(n) %>%
+    max()
+
+  if (num_clust == 1){
     print("All kmers are within a Levenshtein distance of 2")
     Biostrings::DNAStringSet(kmers) %>%
-      Biostrings::pairwiseAlignment(., .[[1]], type = "overlap") %>%
-      Biostrings::consensusMatrix(endgapCode = "N") %>%
+      msa::msa() %>%
+      Biostrings::consensusMatrix() %>%
       t() %>%
       dplyr::as_tibble(rownames = "pos") %>%
-      dplyr::mutate(A = A + 0.25*N,
-                    C = C + 0.25*N,
-                    G = G + 0.25*N,
-                    T = T + 0.25*N) %>%
+      dplyr::rename("gap" = `-`) %>%
+      dplyr::mutate(A = A + 0.25*gap,
+                    C = C + 0.25*gap,
+                    G = G + 0.25*gap,
+                    T = T + 0.25*gap) %>%
       dplyr::select(A,C,G,T) %>%
       t() %>%
       prop.table(.,2) %>%
       ggseqlogo::ggseqlogo(., method = "prob", ncol = 3) +
       ggplot2::ggtitle(title)
-  } else{
+  } else if (num_max_members == 1) {
+    print("No kmers are within a Levenshtein distance of 2, each kmer is its own cluster")
+    Biostrings::DNAStringSet(kmers)
+    Matrix_list <- lapply(c(1:length(kmers)), function(x) consensusMatrix(Biostrings::DNAStringSet(kmers)[x])[1:4,])
+    names(Matrix_list) <- kmers
+    ggseqlogo::ggseqlogo(Matrix_list, method = "prob", ncol = 3) + ggplot2::ggtitle(title)
+
+  } else if (num_clust > 1 & num_max_members > 1) {
+    plot(hc, hang = -1, main = title, xlab = "", sub = "")
     rh <- rect.hclust(hc, h=2.5) #groups with levenshtein distance < 2
     names(rh) <- as.character(c(1:length(rh)))
 
@@ -63,24 +79,39 @@ kmer2logo <- function(kmers, title = ""){
 
     x <- c(1: num_grps)
 
-    list <- lapply(x, function(x) df %>%
+    kmer_grp_list <- lapply(x, function(x) df %>%
                      dplyr::filter(group == x) %>%
                      dplyr::pull(kmer) %>%
                      as.character() %>%
-                     Biostrings::DNAStringSet() %>%
-                     Biostrings::pairwiseAlignment(., .[[1]], type = "overlap") %>%
-                     Biostrings::consensusMatrix(endgapCode = "N") %>%
+                     Biostrings::DNAStringSet())
+
+
+
+   Matrix_list <- lapply(kmer_grp_list, function(kmer_grp)
+                  if (length(kmer_grp) > 1){
+                     kmer_grp %>%
+                       msa::msa() %>%
+                     Biostrings::consensusMatrix() %>%
                      t() %>%
                      dplyr::as_tibble(rownames = "pos") %>%
-                     dplyr::mutate(A = A + 0.25*N,
-                                   C = C + 0.25*N,
-                                   G = G + 0.25*N,
-                                   T = T + 0.25*N) %>%
+                     dplyr::rename("gap" = `-`) %>%
+                     dplyr::mutate(A = A + 0.25*gap,
+                                   C = C + 0.25*gap,
+                                   G = G + 0.25*gap,
+                                   T = T + 0.25*gap) %>%
                      dplyr::select(A,C,G,T) %>%
                      t() %>%
-                     prop.table(.,2))
+                     prop.table(.,2)
+                     } else {kmer_grp %>%
+                         Biostrings::consensusMatrix() %>%
+                         t()%>%
+                         dplyr::as_tibble(rownames = "pos") %>%
+                         dplyr::select(A,C,G,T) %>%
+                         t() %>%
+                         prop.table(.,2)
+                       })
 
-    ggseqlogo::ggseqlogo(list, method = "prob", ncol = 3) + ggplot2::ggtitle(title)
+    ggseqlogo::ggseqlogo(Matrix_list, method = "prob", ncol = 3) + ggplot2::ggtitle(title)
   }
 }
 #'
@@ -91,13 +122,30 @@ kmer2tree <- function(kmers, title = ""){
   d  <- adist(kmers) #this is Levenshtein distance
   rownames(d) <- kmers
   hc <- hclust(as.dist(d))
-  plot(hc, hang = -1, main = title, xlab = "", sub = "")
 
-  rh <- rect.hclust(hc, h=2.5) #groups with levenshtein distance < 2
-  names(rh) <- as.character(c(1:length(rh)))
+  num_clust <- length(unique(cutree(hc,h = 2.5)))
+  num_max_members <- cutree(hc,h = 2.5) %>%
+    as_tibble(rownames = "kmer") %>%
+    group_by(value) %>%
+    summarize(n=n(), .groups = "drop") %>%
+    pull(n) %>%
+    max()
 
-  beg_clus <- head(cumsum(c(1, lengths(rh))), -1)
-  text(x = beg_clus, y = 3, col = "red", labels = names(rh), font = 2, cex = 2)
+  if (num_clust == 1) {
+    warning("all kmers are within the same custer and cannot be plotted as a tree")
+  } else if(num_max_members == 1) {
+    warning("each kmer is in its own cluster and cannot be plotted as a tree")
+  } else if (num_clust > 1 & num_max_members > 1) {
+    plot(hc, hang = -1, main = title, xlab = "", sub = "")
+
+    rh <- rect.hclust(hc, h=2.5) #groups with levenshtein distance < 2
+    names(rh) <- as.character(c(1:length(rh)))
+
+    beg_clus <- head(cumsum(c(1, lengths(rh))), -1)
+    text(x = beg_clus, y = 3, col = "red", labels = names(rh), font = 2, cex = 2)
+  } else {
+    warning("kmers not suitable for plotting tree or more kmers must be included.")
+  }
 }
 #'
 #' @describeIn creates a list of PWMs used to create seq logos. The groups match
@@ -105,27 +153,48 @@ kmer2tree <- function(kmers, title = ""){
 #' @export
 #'
 kmer2PWM <- function(kmers){
-  d  <- adist(kmers) # this is Levenshtein distance
+  d  <- adist(kmers) #this is Levenshtein distance
   rownames(d) <- kmers
   hc <- hclust(as.dist(d))
 
-  if (max(hc$height) <= 2){
+  num_clust <- length(unique(cutree(hc,h = 2.5)))
+  num_max_members <- cutree(hc,h = 2.5) %>%
+    as_tibble(rownames = "kmer") %>%
+    group_by(value) %>%
+    summarize(n=n(), .groups = "drop") %>%
+    pull(n) %>%
+    max()
+
+  if (num_clust == 1){
     print("All kmers are within a Levenshtein distance of 2")
-    list <- Biostrings::DNAStringSet(kmers) %>%
-      Biostrings::pairwiseAlignment(., .[[1]], type = "overlap") %>%
-      Biostrings::consensusMatrix(endgapCode = "N") %>%
+    Matrix <- Biostrings::DNAStringSet(kmers) %>%
+      msa::msa() %>%
+      Biostrings::consensusMatrix() %>%
       t() %>%
       dplyr::as_tibble(rownames = "pos") %>%
-      dplyr::mutate(A = A + 0.25*N,
-                    C = C + 0.25*N,
-                    G = G + 0.25*N,
-                    T = T + 0.25*N) %>%
+      dplyr::rename("gap" = `-`) %>%
+      dplyr::mutate(A = A + 0.25*gap,
+                    C = C + 0.25*gap,
+                    G = G + 0.25*gap,
+                    T = T + 0.25*gap) %>%
       dplyr::select(A,C,G,T) %>%
       t() %>%
       prop.table(.,2)
-  } else{
-    rh <- rect.hclust(hc, h=2.5, border = "#00000000") # Levenshtein distance < 2
+    return(Matrix)
+
+  } else if (num_max_members == 1) {
+    print("No kmers are within a Levenshtein distance of 2, each kmer is its own cluster")
+    Biostrings::DNAStringSet(kmers)
+    Matrix_list <- lapply(c(1:length(kmers)), function(x) consensusMatrix(Biostrings::DNAStringSet(kmers)[x])[1:4,])
+    names(Matrix_list) <- kmers
+    return(Matrix_list)
+
+    } else if (num_clust > 1 & num_max_members > 1) {
+    rh <- rect.hclust(hc, h=2.5) #groups with levenshtein distance < 2
     names(rh) <- as.character(c(1:length(rh)))
+
+    beg_clus <- head(cumsum(c(1, lengths(rh))), -1)
+    text(x = beg_clus, y = 3, col = "red", labels = names(rh), font = 2, cex = 2)
 
     df <- lapply(rh, names) %>%
       tibble::enframe() %>%
@@ -136,25 +205,41 @@ kmer2PWM <- function(kmers){
       dplyr::pull(group) %>%
       unique() %>%
       length()
+
     x <- c(1: num_grps)
 
-    list <- lapply(x, function(x) df %>%
-                     dplyr::filter(group == x) %>%
-                     dplyr::pull(kmer) %>%
-                     as.character() %>%
-                     Biostrings::DNAStringSet() %>%
-                     Biostrings::pairwiseAlignment(., .[[1]], type = "overlap") %>%
-                     Biostrings::consensusMatrix(endgapCode = "N") %>%
-                     t() %>%
-                     dplyr::as_tibble(rownames = "pos") %>%
-                     dplyr::mutate(A = A + 0.25*N,
-                                   C = C + 0.25*N,
-                                   G = G + 0.25*N,
-                                   T = T + 0.25*N) %>% # shifts treated as N (equal A, C, G, T)
-                     dplyr::select(A,C,G,T) %>%
-                     t() %>%
-                     prop.table(.,2))
+    kmer_grp_list <- lapply(x, function(x) df %>%
+                              dplyr::filter(group == x) %>%
+                              dplyr::pull(kmer) %>%
+                              as.character() %>%
+                              Biostrings::DNAStringSet())
+
+
+
+    Matrix_list <- lapply(kmer_grp_list, function(kmer_grp)
+      if (length(kmer_grp) > 1){
+        kmer_grp %>%
+          msa::msa() %>%
+          Biostrings::consensusMatrix() %>%
+          t() %>%
+          dplyr::as_tibble(rownames = "pos") %>%
+          dplyr::rename("gap" = `-`) %>%
+          dplyr::mutate(A = A + 0.25*gap,
+                        C = C + 0.25*gap,
+                        G = G + 0.25*gap,
+                        T = T + 0.25*gap) %>%
+          dplyr::select(A,C,G,T) %>%
+          t() %>%
+          prop.table(.,2)
+      } else {kmer_grp %>%
+          Biostrings::consensusMatrix() %>%
+          t()%>%
+          dplyr::as_tibble(rownames = "pos") %>%
+          dplyr::select(A,C,G,T) %>%
+          t() %>%
+          prop.table(.,2)
+      })
   }
-  return(list)
+  return(Matrix_list)
 }
 

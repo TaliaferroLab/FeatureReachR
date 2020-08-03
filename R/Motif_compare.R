@@ -56,8 +56,8 @@ motif_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
            case_tot = sum(case)-case,
            ctrl_tot = sum(ctrl)-ctrl) %>%
     dplyr::rowwise() %>%
-    dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot),
-                  p_adj = p.adjust(pval, method = "BH", nrow(motifs))) %>%
+    dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot)) %>%
+    dplyr::mutate(p_adj = p.adjust(pval, method = "BH")) %>%
     dplyr::select(motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj) %>%
     dplyr::arrange(p_adj)
 
