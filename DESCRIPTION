@@ -13,7 +13,8 @@ biocViews:
 Suggests:
     bedtools,
     bedops,
-    tabix
+    tabix,
+    testthat
 License: What license is it under?
 Imports:
     knitr,
@@ -22,7 +23,7 @@ Imports:
     bedr (>= 1.0.7),
     dplyr (>= 0.8.5),
     GenomicRanges (>= 1.34.0),
-    IRanges (>= 2.16.0),
+    IRanges (>= 2.17.1),
     rtracklayer (>= 1.42.2),
     GenomicFeatures (>= 1.34.8),
     GenomeInfoDb (>=  1.18.2),
@@ -42,5 +43,5 @@ Imports:
     msa
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 VignetteBuilder: knitr

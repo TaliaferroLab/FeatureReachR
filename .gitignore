@@ -6,3 +6,5 @@ mydata
 knit html
 inst/doc
 *.html
+doc
+Meta

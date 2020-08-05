@@ -42,7 +42,7 @@ length_plot(case, ctrl)
 
 GC content is more interesting. 
 
-We see that the case sequences have a significantly higher GC content than the case sequences.
+We see that the case sequences have a significantly higher GC content than the control sequences.
 This could indicate that RBFOX2 preferentially binds higher GC sequences.
 
 ```{r, GC comparison}
@@ -68,7 +68,7 @@ kmer_plot(kmer_stats)
 ##enriched kmers are of particular interest.
 enriched_kmers <- kmer_stats %>% 
   filter(p_adj < 0.05, log2FC > 0) %>% 
-  pull(., kmer) %>% 
+  pull(kmer) %>% 
   as.character()
 
 ```

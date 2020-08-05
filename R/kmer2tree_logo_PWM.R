@@ -9,7 +9,7 @@
 #' @param title string for plot titles defaults to no title.
 #' @return a tree, seqotif plots or a named list of PWMs
 #' @seealso
-#' \code{kmer_compare}, \code{\link[ggseqlogo]{ggseqlogo}}, \code{\link[msa]{msa}}
+#' \code{kmer_compare}, \code{\link[ggseqlogo]{ggseqlogo}}, \code{\link[msa]{msaClustalW}}
 #' @examples
 #' enriched_sixmers <- c("AAGGAA", "ACACAC", "AGAAGG", "AGAGAG", "AGAGGG",
 #' "AGGAAG", "AGGAGG", "AGGGAG", "CACACA", "GAAGGA", "GAGAAG", "GAGAGA",
@@ -38,7 +38,7 @@ kmer2logo <- function(kmers, title = ""){
   if (num_clust == 1){
     print("All kmers are within a Levenshtein distance of 2")
     Biostrings::DNAStringSet(kmers) %>%
-      msa::msa() %>%
+      msa::msaClustalW() %>%
       Biostrings::consensusMatrix() %>%
       t() %>%
       dplyr::as_tibble(rownames = "pos") %>%
@@ -90,7 +90,7 @@ kmer2logo <- function(kmers, title = ""){
    Matrix_list <- lapply(kmer_grp_list, function(kmer_grp)
                   if (length(kmer_grp) > 1){
                      kmer_grp %>%
-                       msa::msa() %>%
+                       msa::msaClustalW() %>%
                      Biostrings::consensusMatrix() %>%
                      t() %>%
                      dplyr::as_tibble(rownames = "pos") %>%
@@ -168,7 +168,7 @@ kmer2PWM <- function(kmers){
   if (num_clust == 1){
     print("All kmers are within a Levenshtein distance of 2")
     Matrix <- Biostrings::DNAStringSet(kmers) %>%
-      msa::msa() %>%
+      msa::msaClustalW() %>%
       Biostrings::consensusMatrix() %>%
       t() %>%
       dplyr::as_tibble(rownames = "pos") %>%
@@ -219,7 +219,7 @@ kmer2PWM <- function(kmers){
     Matrix_list <- lapply(kmer_grp_list, function(kmer_grp)
       if (length(kmer_grp) > 1){
         kmer_grp %>%
-          msa::msa() %>%
+          msa::msaClustalW() %>%
           Biostrings::consensusMatrix() %>%
           t() %>%
           dplyr::as_tibble(rownames = "pos") %>%
