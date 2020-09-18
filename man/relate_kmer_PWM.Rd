@@ -27,8 +27,8 @@ RNAreachR.
 }
 \examples{
 #this table is already saved in RNAreachR
-relate_Kmer_RBNS(4, RBNS_PWM)
-relate_kmer_RBNS(6, custom_PWM_list)
+relate_Kmer_PWM(4, RBNS_PWM)
+relate_kmer_PWM(6, custom_PWM_list)
 }
 \seealso{
 \code{\link[Biostrings]{countPWM}}, \code{\link{motif_compare}}

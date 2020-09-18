@@ -16,13 +16,12 @@
 #' "AGGAAG", "AGGAGG", "AGGGAG", "CACACA", "GAAGGA", "GAGAAG", "GAGAGA",
 #' "GAGGAG", "GAGGGA", "GAGGGG", "GGAAGG", "GGAGGA", "GGAGGG", "GGGAGG")
 #' estimate_motif_from_kmer(enriched_sixmers, "RBNS")
-#' estimate_motif_from_kmer(enriched_sixmers, "custom", )
+#' estimate_motif_from_kmer(enriched_sixmers, "custom", custom_PWM)
 #' @export
 estimate_motif_from_kmer <- function(kmer_list, motif_set, custom_motif_by_kmer_matrix = NULL){
   #infer k from kmer_list list.
   if (length(unique(nchar(as.character(kmer_list)))) != 1){
-    warning("kmers in kmer list are not the same length using the shortest kmer as k")
-    k = min(unique(nchar(as.character(kmer_list))))
+    stop("kmers in kmer list are not the same length")
   }
   else
     k = unique(nchar(as.character(kmer_list)))
@@ -82,19 +81,23 @@ estimate_motif_from_kmer <- function(kmer_list, motif_set, custom_motif_by_kmer_
   x <- c(1:nrow(motif_by_kmer))
   motif_estimate <- motif_by_kmer %>%
     dplyr::as_tibble() %>%
-    dplyr:: mutate(input_kmer = rowSums(dplyr::select(., kmer_list)),
+    dplyr::mutate(input_kmer = rowSums(dplyr::select(., all_of(kmer_list))),
                    all_kmer = rowSums(dplyr::select(., -motif)),
                    tile = as.character(lapply(x, function(x) strsplit(as.character(motif_by_kmer$motif[x]), "_(?=[^_]+$)", perl=TRUE)[[1]][2])),
                    motif = as.character(lapply(x, function(x) strsplit(as.character(motif_by_kmer$motif[x]), "_(?=[^_]+$)", perl=TRUE)[[1]][1])),
                    motif = ifelse(tile %in% as.character(c(1:99)), motif, paste(motif, tile, sep = "_")),
                    tile = ifelse(tile %in% as.character(c(1:99)), tile, "0")) %>%
     dplyr::group_by(motif) %>%
-    dplyr::summarize(input_kmer = sum(input_kmer), all_kmer = sum(all_kmer)) %>%
+    dplyr::summarize(input_kmer = sum(input_kmer), all_kmer = sum(all_kmer), .groups = "rowwise") %>%
     dplyr::mutate(input_freq = input_kmer / length(kmer_list),
-                  all_freq = (all_kmer - input_kmer) / (k^4 - length(kmer_list)),
+                  all_freq = (all_kmer - input_kmer) / (4^k - length(kmer_list)),
                   log2FC = log2((input_freq/all_freq)+1),
-                  p_val = phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE)) %>%
-    dplyr::mutate(p_adj = p.adjust(p_val, method = "BH"))  %>%
+                  p_val = ifelse(all_kmer > 4^k && input_kmer > length(kmer_list), phyper(length(kmer_list)-1, length(kmer_list), (4^k)-length(kmer_list), 4^k, lower.tail = FALSE),
+                                 ifelse(all_kmer > 4^k, phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), 4^k, lower.tail = FALSE),
+                                 ifelse(input_kmer > length(kmer_list), phyper(length(kmer_list)-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE),
+                                 phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE))))) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(p_adj = p.adjust(p_val, method = "BH")) %>%
     dplyr::arrange(p_adj)
 
   return(motif_estimate)

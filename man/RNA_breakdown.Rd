@@ -17,7 +17,7 @@ general filter and a protein coding filter.}
 compatible with the gff (the same species)}
 }
 \value{
-\code{RNA_breakdown} creates a summary table containing both the
+\code{RNA_breakdown} creates a y table containing both the
 number of transcripts categorized within an RNA type (count) and the
 percent of the total set an RNA type represents (percent).
 }

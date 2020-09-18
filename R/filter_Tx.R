@@ -20,16 +20,16 @@
 #'   for more information
 #' @examples
 #' # No filtering
-#' hs_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz", filter = FALSE, protein.coding = FALSE)
-#' mm_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", filter = FALSE, protein.coding = FALSE)
+#' hs_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"), filter = FALSE, protein.coding = FALSE)
+#' mm_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), filter = FALSE, protein.coding = FALSE)
 #'
 #' # Filter out low confidence transcripts
-#' hs_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz")
-#' mm_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz")
+#' hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"))
+#' mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"))
 #'
 #' # Filter out low confidence transcripts and non-coding transcripts
-#' hs_coding_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz", protein.coding = TRUE)
-#' mm_coding_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", protein.coding = TRUE)
+#' hs_coding_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"), protein.coding = TRUE)
+#' mm_coding_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), protein.coding = TRUE)
 #' @export
 filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE) {
   # import gencode gff as GRanges object
@@ -56,10 +56,10 @@ filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE) {
 
   #create txdb gene model from filtered gff
   if (all(grepl("ENSG", gff$gene_id))) {
-    txdbGFF <- GenomicFeatures::makeTxDbFromGRanges(gff)
+    txdbGFF <- suppressWarnings(GenomicFeatures::makeTxDbFromGRanges(gff))
     GenomeInfoDb::seqlevelsStyle(txdbGFF) <- "NCBI"
   } else if (all(grepl("ENSMUSG", gff$gene_id))) {
-    txdbGFF <- GenomicFeatures::makeTxDbFromGRanges(gff)
+    txdbGFF <- suppressWarnings(GenomicFeatures::makeTxDbFromGRanges(gff))
   }
 
   return(txdbGFF)

@@ -14,7 +14,7 @@
 #'   general filter and a protein coding filter.
 #' @param tx_list A character list. Must contain Ensembl transcript IDs and be
 #'   compatible with the gff (the same species)
-#' @return \code{RNA_breakdown} creates a summary table containing both the
+#' @return \code{RNA_breakdown} creates a y table containing both the
 #' number of transcripts categorized within an RNA type (count) and the
 #' percent of the total set an RNA type represents (percent).
 #' @seealso \code{\link{gene2tx()}},
@@ -62,8 +62,8 @@ RNA_breakdown <- function(gff, tx_list) {
   RNA_breakdown <- gff@elementMetadata %>%
     dplyr::as_tibble() %>%
     dplyr::group_by(transcript_type) %>%
-    dplyr::summarize(count = n(),
-                     percent = n() / nrow(.) * 100)
+    dplyr::summarize(count = dplyr::n(),
+                     percent = dplyr::n() / nrow(.) * 100)
 
   return(RNA_breakdown)
 }

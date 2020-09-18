@@ -1,0 +1,21 @@
+##gff-version 3
+##source-version rtracklayer 1.46.0
+##date 2020-09-16
+1	rtracklayer	mRNA	11869	14409	.	+	.	ID=mRNA1;Name=ENST00000456328.2;
+1	rtracklayer	mRNA	1632173	1634654	.	+	.	ID=mRNA2;Name=ENST00000356026.10;
+1	rtracklayer	mRNA	1373730	1375495	.	-	.	ID=mRNA3;Name=ENST00000338338.9;
+1	rtracklayer	exon	11869	12227	.	+	.	ID=exon1;exon_id=1;exon_name=ENST00000456328.2:1;exon_rank=1;Parent=mRNA1
+1	rtracklayer	exon	12613	12721	.	+	.	ID=exon2;exon_id=2;exon_name=ENST00000456328.2:2;exon_rank=2;Parent=mRNA1
+1	rtracklayer	exon	13221	14409	.	+	.	ID=exon3;exon_id=3;exon_name=ENST00000456328.2:3;exon_rank=3;Parent=mRNA1
+1	rtracklayer	exon	1632173	1632374	.	+	.	ID=exon4;exon_id=851;exon_name=ENST00000356026.10:1;exon_rank=1;Parent=mRNA2
+1	rtracklayer	exon	1632783	1632913	.	+	.	ID=exon5;exon_id=854;exon_name=ENST00000356026.10:2;exon_rank=2;Parent=mRNA2
+1	rtracklayer	exon	1632981	1633120	.	+	.	ID=exon6;exon_id=857;exon_name=ENST00000356026.10:3;exon_rank=3;Parent=mRNA2
+1	rtracklayer	exon	1633188	1633355	.	+	.	ID=exon7;exon_id=860;exon_name=ENST00000356026.10:4;exon_rank=4;Parent=mRNA2
+1	rtracklayer	exon	1633748	1633912	.	+	.	ID=exon8;exon_id=865;exon_name=ENST00000356026.10:5;exon_rank=5;Parent=mRNA2
+1	rtracklayer	exon	1633989	1634099	.	+	.	ID=exon9;exon_id=869;exon_name=ENST00000356026.10:6;exon_rank=6;Parent=mRNA2
+1	rtracklayer	exon	1634202	1634328	.	+	.	ID=exon10;exon_id=874;exon_name=ENST00000356026.10:7;exon_rank=7;Parent=mRNA2
+1	rtracklayer	exon	1634451	1634654	.	+	.	ID=exon11;exon_id=885;exon_name=ENST00000356026.10:8;exon_rank=8;Parent=mRNA2
+1	rtracklayer	exon	1375154	1375495	.	-	.	ID=exon12;exon_id=41892;exon_name=ENST00000338338.9:1;exon_rank=1;Parent=mRNA3
+1	rtracklayer	exon	1374705	1374790	.	-	.	ID=exon13;exon_id=41885;exon_name=ENST00000338338.9:2;exon_rank=2;Parent=mRNA3
+1	rtracklayer	exon	1374000	1374445	.	-	.	ID=exon14;exon_id=41879;exon_name=ENST00000338338.9:3;exon_rank=3;Parent=mRNA3
+1	rtracklayer	exon	1373730	1373902	.	-	.	ID=exon15;exon_id=41874;exon_name=ENST00000338338.9:4;exon_rank=4;Parent=mRNA3

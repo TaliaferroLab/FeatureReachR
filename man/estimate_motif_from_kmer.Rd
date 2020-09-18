@@ -34,5 +34,5 @@ enriched_sixmers <- c("AAGGAA", "ACACAC", "AGAAGG", "AGAGAG", "AGAGGG",
 "AGGAAG", "AGGAGG", "AGGGAG", "CACACA", "GAAGGA", "GAGAAG", "GAGAGA",
 "GAGGAG", "GAGGGA", "GAGGGG", "GGAAGG", "GGAGGA", "GGAGGG", "GGGAGG")
 estimate_motif_from_kmer(enriched_sixmers, "RBNS")
-estimate_motif_from_kmer(enriched_sixmers, "custom", )
+estimate_motif_from_kmer(enriched_sixmers, "custom", custom_PWM)
 }

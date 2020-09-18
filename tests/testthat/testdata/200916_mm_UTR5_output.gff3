@@ -1,0 +1,8 @@
+##gff-version 3
+##source-version rtracklayer 1.46.0
+##date 2020-09-16
+chr1	rtracklayer	mRNA	4352826	4360314	.	-	.	ID=mRNA1;Name=ENSMUST00000027032.5;
+chr1	rtracklayer	mRNA	4785678	4785710	.	-	.	ID=mRNA2;Name=ENSMUST00000130201.7;
+chr1	rtracklayer	exon	4360200	4360314	.	-	.	ID=exon1;exon_id=14899;exon_name=ENSMUST00000027032.5:1;exon_rank=1;Parent=mRNA1
+chr1	rtracklayer	exon	4352826	4352837	.	-	.	ID=exon2;exon_id=14896;exon_name=ENSMUST00000027032.5:2;exon_rank=2;Parent=mRNA1
+chr1	rtracklayer	exon	4785678	4785710	.	-	.	ID=exon3;exon_id=14936;exon_name=ENSMUST00000130201.7:1;exon_rank=1;Parent=mRNA2

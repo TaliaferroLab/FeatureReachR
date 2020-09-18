@@ -105,6 +105,9 @@ motif_plot(cisbp_estimate)
 #RBFOX2_RBNS_compare <- motif_compare(RBNS_PWM, case, ctrl)
 #RBFOX2_cisbpRNA_compare <- motif_compare(CISBPRNA_hs_PWM, case, ctrl)
 
+data(RBFOX2_RBNS_compare, package="RNAreachR")
+data(RBFOX2_cisbpRNA_compare, package = "RNAreachR")
+
 #PWM scanning comparison tables
 print(RBFOX2_RBNS_compare)
 motif_plot(RBFOX2_RBNS_compare)

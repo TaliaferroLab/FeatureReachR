@@ -35,14 +35,14 @@ transcripts within your experiment. Alternatively, use
 }
 \examples{
 #generate mydata/hs_test.fa and mydata/hs_test.gff3 containing CDS information for each transcript in hs_tx
-hs_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.v33.annotation.gff3.gz")
+hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"))
 hs_tx <- c("ENST00000456328.2", "ENST00000338338.9", "ENST00000356026.10", "ENST00000607222.1", "ENST00000342066.8")
 getTxOut(hs_filtered_TxDb, hs_tx, "CDS", "mydata/hs_test", "both")
 
 #generate mydata/mm_test.fa and mydata/mm_test.gff3 containing 5'UTR information for each transcript in mm_tx
-mm_filtered_TxDb <- filter_Tx("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz")
+mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"))
 mm_tx <- c("ENSMUST00000159265.1", "ENSMUST00000027032.5", "ENSMUST00000130201.7", "ENSMUST00000157375.1")
-getTxOut(mm_filtered_TxDb, mm_tx, "5pUTR", "mydata/mm_test", "both")
+getTxOut(mm_filtered_TxDb, mm_tx, "UTR5", "mydata/mm_test", "both")
 }
 \seealso{
 \code{\link{filter_Tx}}, \code{\link{gene2tx}},

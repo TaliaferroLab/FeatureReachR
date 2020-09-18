@@ -30,6 +30,10 @@ motif_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
 
   print("Checking PWM data", quote = FALSE)
 
+  if (any(names(caseDNAStringset) %in% names(ctrlDNAStringSet))){
+    warning("some sequences in case set are also in the control set. This is not recommended.")
+  }
+
   if (typeof(PWM_list) != "list"){
     stop("PWM_list must be a list")
   }
@@ -48,7 +52,7 @@ motif_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
 
 
   motifs <- motifs %>%
-    mutate(case = suppressWarnings(unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))),
+    dplyr::mutate(case = suppressWarnings(unlist(lapply(PWM, function(x) lapply(caseDNAStringset, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))),
            ctrl = suppressWarnings(unlist(lapply(PWM, function(x) lapply(ctrlDNAStringSet, function(y) Biostrings::countPWM(x, y)) %>% unlist() %>% sum()))),
            case_freq = case / sum(Biostrings::width(caseDNAStringset)),
            ctrl_freq = ctrl / sum(Biostrings::width(ctrlDNAStringSet)),
@@ -57,11 +61,13 @@ motif_compare <- function(PWM_list, caseDNAStringset, ctrlDNAStringSet){
            ctrl_tot = sum(ctrl)-ctrl) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(pval = fisher(case, ctrl, case_tot, ctrl_tot)) %>%
+    dplyr::ungroup() %>%
     dplyr::mutate(p_adj = p.adjust(pval, method = "BH")) %>%
     dplyr::select(motif, case, ctrl, case_freq, ctrl_freq, log2FC, case_tot, ctrl_tot, pval, p_adj) %>%
     dplyr::arrange(p_adj)
 
+  print("All Finished.", quote = FALSE)
+
   return(motifs)
 
-  print("All Finished.", quote = FALSE)
 }

@@ -17,8 +17,8 @@
 #' @examples
 #' case_fasta <- Biostrings::readDNAStringSet("example_case.fa")
 #'
-#' custom_PWM_by_gene(CISBPRNA_mm_PWM, case_fasta)
-#' custom_PWM_by_gene(RBNS_PWM, case_fasta)
+#' motif_by_gene(CISBPRNA_mm_PWM, case_fasta)
+#' motif_by_gene(RBNS_PWM, case_fasta)
 #'
 #' @export
 motif_by_gene <- function(PWM_list, DNAStringset){

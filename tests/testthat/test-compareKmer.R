@@ -1,0 +1,68 @@
+context("kmer compare Outputs")
+library(RNAreachR)
+
+case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "RNAreachR"))
+ctrl <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "RNAreachR"))
+
+k5 <- kmer_compare(case, ctrl, 5)
+k6 <- kmer_compare(case, ctrl, 6)
+
+test_that("Output is correct dimension and types", {
+  expect_is(k5, "data.frame")
+  expect_is(k5$kmer, "factor")
+  expect_is(k5$ctrl, "numeric")
+  expect_is(k5$case, "numeric")
+  expect_is(k5$ctrl_freq, "numeric")
+  expect_is(k5$case_freq, "numeric")
+  expect_is(k5$log2FC, "numeric")
+  expect_is(k5$ctrl_tot, "numeric")
+  expect_is(k5$case_tot, "numeric")
+  expect_is(k5$pval, "numeric")
+  expect_is(k5$p_adj, "numeric")
+  expect_equal(nrow(k5), 4^5)
+  expect_equal(ncol(k5), 10)
+
+  expect_is(k6, "data.frame")
+  expect_is(k6$kmer, "factor")
+  expect_is(k6$ctrl, "numeric")
+  expect_is(k6$case, "numeric")
+  expect_is(k6$ctrl_freq, "numeric")
+  expect_is(k6$case_freq, "numeric")
+  expect_is(k6$log2FC, "numeric")
+  expect_is(k6$ctrl_tot, "numeric")
+  expect_is(k6$case_tot, "numeric")
+  expect_is(k6$pval, "numeric")
+  expect_is(k6$p_adj, "numeric")
+  expect_equal(nrow(k6), 4^6)
+  expect_equal(ncol(k6), 10)
+
+})
+
+test_that("Output produces expected values", {
+  expect_equal(all(nchar(as.character(k5$kmer)) == 5), TRUE)
+  expect_equal(k5$ctrl[1:10], c(1168, 1363, 4176, 1115, 1346, 3215, 3261, 2943, 1136, 4713))
+  expect_equal(k5$case[1:10], c(212, 215, 330, 167, 188, 271, 276, 248, 83, 423))
+  expect_equal(k5$ctrl_freq[1:10], c(0.0009484376, 0.001106781, 0.003390989, 0.0009054007, 0.001092977, 0.00261064, 0.002647992, 0.002389771, 0.000922453, 0.003827043))
+  expect_equal(k5$case_freq[1:10], c(0.001647485, 0.001670798, 0.002564481, 0.001297783, 0.001460977, 0.002105983, 0.002144839, 0.001927246, 0.0006450059, 0.003287199))
+  expect_equal(k5$log2FC[1:10], c(0.7966404, 0.5941675, -0.4030393, 0.5194208, 0.4186707, -0.3099095, -0.3040298, -0.310331, -0.5161632, -0.2193716), tolerance = .0001)
+  expect_equal(k5$ctrl_tot[1:10], c(1230331, 1230136, 1227323, 1230384, 1230153, 1228284, 1228238, 1228556, 1230363, 1226786))
+  expect_equal(k5$case_tot[1:10], c(128469, 128466, 128351, 128514, 128493, 128410, 128405, 128433, 128598, 128258))
+  expect_equal(k5$pval[1:10], c(3.633186e-12, 8.546057e-08, 4.338647e-07, 3.116689e-05, 0.0002875482, 0.0005047763, 0.0006140973, 0.0009562069, 0.001206492, 0.00241068))
+  expect_equal(k5$p_adj[1:10], c(3.720382e-09, 4.375581e-05, 0.0001480925, 0.007978724, 0.05888986, 0.08614848, 0.08983366, 0.1223945, 0.137272, 0.1542835), tolerance = .0001)
+
+  expect_equal(all(nchar(as.character(k6$kmer)) == 6), TRUE)
+  expect_equal(k6$ctrl[1:10], c(389, 212, 1727, 322, 841, 365, 88, 344, 24, 325))
+  expect_equal(k6$case[1:10], c(103, 57, 116, 64, 50, 67, 24, 62, 11, 14))
+  expect_equal(k6$ctrl_freq[1:10], c(0.0003175101, 0.0001730389, 0.001409614, 0.0002628232, 0.0006864421, 0.0002979208, 7.182747e-05, 0.0002807801, 1.958931e-05, 0.0002652719))
+  expect_equal(k6$case_freq[1:10], c(0.0008045681, 0.0004452464, 0.0009061155, 0.0004999258, 0.000390567, 0.0005233598, 0.0001874722, 0.0004843031, 8.592475e-05, 0.0001093588))
+  expect_equal(k6$log2FC[1:10], c(1.341412, 1.363508, -0.6375334, 0.9276211, -0.8135678, 0.8128745, 1.384069, 0.7864695, 2.133007, -1.278403), tolerance = .0001)
+  expect_equal(k6$ctrl_tot[1:10], c(1224769, 1224946, 1223431, 1224836, 1224317, 1224793, 1225070, 1224814, 1225134, 1224833))
+  expect_equal(k6$case_tot[1:10], c(127916, 127962, 127903, 127955, 127969, 127952, 127995, 127957, 128008, 128005))
+  expect_equal(k6$pval[1:10], c(1.831767e-14, 7.19989e-09, 1.115679e-06, 1.111551e-05, 3.504937e-05, 6.913596e-05, 0.0001270026, 0.0001754906, 0.0002619036, 0.0003737863))
+  expect_equal(k6$p_adj[1:10], c(7.50292e-11, 1.474537e-05, 0.001523274, 0.01138228, 0.02871245, 0.04719682, 0.07431465, 0.08985119, 0.1191952, 0.1531029), tolerance = .0001)
+
+})
+
+test_that("kmer compare detects incorrect inputs", {
+  expect_warning(kmer_compare(case,case, 4), "some sequences in case set are also in the control set. This is not recommended.")
+})

@@ -34,8 +34,8 @@ kmer_plot <- function(kmer_stats, sig_cutoff = 0.05){
   } else {
     p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
       ggplot2::geom_point() +
-      scale_color_manual(values = "Black") +
-      scale_alpha_manual(values = 0.1) +
+      ggplot2::scale_color_manual(values = "Black") +
+      ggplot2::scale_alpha_manual(values = 0.1) +
       cowplot::theme_cowplot()
     }
 }
@@ -54,8 +54,8 @@ motif_plot <- function(RBP_stats, sig_cutoff = 0.05){
   } else {
     p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
       ggplot2::geom_point() +
-      scale_color_manual(values = "Black") +
-      scale_alpha_manual(values = 0.1) +
+      ggplot2::scale_color_manual(values = "Black") +
+      ggplot2::scale_alpha_manual(values = 0.1) +
       cowplot::theme_cowplot()
   }
 }

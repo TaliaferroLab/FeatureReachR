@@ -16,8 +16,8 @@
 #' @seealso \code{\link[Biostrings]{countPWM}}, \code{\link{motif_compare}}
 #' @examples
 #' #this table is already saved in RNAreachR
-#' relate_Kmer_RBNS(4, RBNS_PWM)
-#' relate_kmer_RBNS(6, custom_PWM_list)
+#' relate_Kmer_PWM(4, RBNS_PWM)
+#' relate_kmer_PWM(6, custom_PWM_list)
 #' @export
 relate_kmer_PWM <- function(k, PWM_list){
 
@@ -41,13 +41,13 @@ relate_kmer_PWM <- function(k, PWM_list){
   }
 
   if (any(as.numeric(lapply(PWM_list, nrow)) != 4)){
-    stop("Error: Ensure all PWM matricies have exactly 4 rows (\"A\", \"C\", \"G\" and \"T\")")
+    stop("Error: Ensure all PWM matricies have exactly 4 rows (A, C, G and T)")
   }
 
   #this function makes every PWM the same length as k or shorter by tiling across longer PWM matrices
   mattiles <- function(Mat, k) {
 
-    if(ncol(Mat[[1]]) > k){
+    if(any(lapply(Mat, ncol) > k)){
       x <- c(1:(ncol(Mat[[1]])-(k-1)))-1
       list <- lapply(x, function(x) Mat[[1]][,(1+x):(k+x)])
       names(list) <- lapply(x, function(x) paste(names(Mat), "_", x + 1, sep = ""))

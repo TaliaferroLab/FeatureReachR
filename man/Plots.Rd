@@ -41,5 +41,5 @@ kmer_PWMs
 
 }
 \seealso{
-\code{kmer_compare}, \code{\link[ggseqlogo]{ggseqlogo}}, \code{\link[msa]{msa}}
+\code{kmer_compare}, \code{\link[ggseqlogo]{ggseqlogo}}, \code{\link[msa]{msaClustalW}}
 }

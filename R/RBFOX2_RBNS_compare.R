@@ -18,5 +18,4 @@
 #'   }
 #' @source output from \code{PWM_compare(RBFOX_case, RBFOX_ctrl, "RBNS")}
 #' in easy sequence analysis vignette.
-#'
-'RBFOX2_RBNS_compare'
+"RBFOX2_RBNS_compare"
