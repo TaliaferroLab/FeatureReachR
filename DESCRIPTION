@@ -11,7 +11,7 @@ Depends:
     R (>= 3.6)
 biocViews:
 Suggests:
-    bedtools,
+    >= bedtools v2.26,
     bedops,
     tabix,
     testthat
