@@ -11,7 +11,7 @@
 #'   \code{wilcox.test}, then corrected by \code{p.adjust} with the \code{method = "BH"}.
 #'   The mean values for each DNAStringSet, and the log2 Fold
 #'   change between those means
-#' @seealso \code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+#' @seealso \code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
 #'   \code{\link[Biostrings]{oligonucleotideFrequency}},\code{\link{kmer_by_gene}},
 #'    \code{\link[effsize]{cliff.delta}}
 #' @examples

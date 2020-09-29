@@ -1,9 +1,9 @@
 context("filter tx")
-library(RNAreachR)
+library(FeatureReachR)
 
-NF <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), filter = FALSE, protein.coding = FALSE)
-Filt <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), filter = TRUE, protein.coding = FALSE)
-PC <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), filter = TRUE, protein.coding = TRUE)
+NF <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), filter = FALSE, protein.coding = FALSE)
+Filt <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), filter = TRUE, protein.coding = FALSE)
+PC <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), filter = TRUE, protein.coding = TRUE)
 
 test_that("filter Tx Output is correct dimension and types", {
   expect_is(NF, "TxDb")

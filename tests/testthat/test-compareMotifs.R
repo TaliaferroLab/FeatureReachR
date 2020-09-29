@@ -1,8 +1,8 @@
 context("kmer compare Outputs")
-library(RNAreachR)
+library(FeatureReachR)
 
-case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "RNAreachR"))
-ctrl <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "RNAreachR"))
+case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "FeatureReachR"))
+ctrl <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "FeatureReachR"))
 
 cisbp <- motif_compare(CISBPRNA_hs_PWM[1:10], case, ctrl[1:1000])
 RBNS <- motif_compare(RBNS_PWM[1:10], case, ctrl[1:1000])

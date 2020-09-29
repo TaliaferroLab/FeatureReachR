@@ -36,6 +36,6 @@ get_length(case_fasta)
 get_GC(case_fasta)
 }
 \seealso{
-\code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+\code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
   \code{\link[Biostrings]{letterFrequency}}
 }

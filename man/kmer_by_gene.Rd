@@ -25,6 +25,6 @@ case_fasta <- Biostrings::readDNAStringSet("example_case.fa")
 case_fasta_kmer_counts <- kmer_by_gene(case_fasta, 6)
 }
 \seealso{
-\code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+\code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
   \code{\link[Biostrings]{oligonucleotideFrequency}}, \code{\link{kmer_compare}}
 }

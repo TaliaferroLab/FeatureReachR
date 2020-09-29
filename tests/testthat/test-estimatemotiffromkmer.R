@@ -1,5 +1,5 @@
 context("motif estimates from kmer")
-library(RNAreachR)
+library(FeatureReachR)
 
 R4 <- relate_kmer_PWM(4, RBNS_PWM)
 RBNS_5mer <- RBNS_PWM[lapply(RBNS_PWM, ncol)==5]
@@ -69,13 +69,13 @@ test_that("motif by gene Output is correct dimension and types", {
 
 test_that("kmer estimate Output produces expected values", {
   expect_equal(all(E$motif %in% names(RBNS_PWM)), TRUE)
-  expect_equal(E$input_kmer[1:10], c(13, 12, 14, 8, 6, 6, 6, 4, 6, 5))
-  expect_equal(E$all_kmer[1:10], c(147, 120, 228, 100, 72, 80, 92, 31, 128, 118))
-  expect_equal(E$input_freq[1:10], c(0.6842105, 0.6315789, 0.7368421, 0.4210526, 0.3157895, 0.3157895, 0.3157895, 0.2105263, 0.3157895, 0.2631579), tolerance = 0.0001)
-  expect_equal(E$all_freq[1:10], c(0.0328673, 0.02649007, 0.05248958, 0.02256561, 0.01618837, 0.0181506, 0.02109394, 0.006622517, 0.02992396, 0.02771646), tolerance = 0.0001)
-  expect_equal(E$log2FC[1:10], c(4.447405, 4.634716, 3.910529, 4.297121, 4.358057, 4.2015, 3.997349, 5.035161, 3.530203, 3.391581), tolerance = 0.0001)
-  expect_equal(E$p_val[1:10], c(2.179122e-15, 9.753488e-15, 1.688155e-14, 5.770754e-09, 5.412999e-07, 1.018384e-06, 2.337774e-06, 9.619356e-06, 1.609214e-05, 0.0001533745))
-  expect_equal(E$p_adj[1:10], c(2.85465e-13, 6.388535e-13, 7.371611e-13, 1.889922e-07, 1.418206e-05, 2.223471e-05, 4.374978e-05, 0.0001575169, 0.00023423, 0.002009207))
+  expect_equal(E$input_kmer[1:10], c(13, 14, 12, 8, 6, 6, 6, 4, 6, 5))
+  expect_equal(E$all_kmer[1:10], c(147, 228, 120, 100, 72, 80, 92, 31, 128, 118))
+  expect_equal(E$input_freq[1:10], c(0.6842105, 0.7368421, 0.6315789, 0.4210526, 0.3157895, 0.3157895, 0.3157895, 0.2105263, 0.3157895, 0.2631579), tolerance = 0.0001)
+  expect_equal(E$all_freq[1:10], c(0.0328673, 0.05248958, 0.02649007, 0.02256561, 0.01618837, 0.0181506, 0.02109394, 0.006622517, 0.02992396, 0.02771646), tolerance = 0.0001)
+  expect_equal(E$log2FC[1:10], c(4.447405, 3.910529, 4.634716, 4.297121, 4.358057, 4.2015, 3.997349, 5.035161, 3.530203, 3.391581), tolerance = 0.0001)
+  expect_equal(E$p_val[1:10], c(6.738581e-15, 3.916085e-14, 3.16627e-14, 1.070571e-08, 8.752772e-07, 1.567161e-06, 3.394179e-06, 1.581993e-05, 2.094496e-05, 0.0001866864), tolerance = 0.0001)
+  expect_equal(E$p_adj[1:10], c(8.827541e-13, 1.710024e-12, 1.710024e-12, 3.50612e-07, 2.293226e-05, 3.421634e-05, 6.351963e-05, 0.0002590513, 0.0003048656, 0.002445592), tolerance = 0.0001)
 
 })
 
@@ -83,7 +83,7 @@ mixed_kmers <- c("AACCAA", "AACC", "ACCCA", "ACCCCAA")
 
 test_that("kmer estimate detects incorrect inputs", {
   expect_error(estimate_motif_from_kmer(mixed_kmers, "RBNS"), "kmers in kmer list are not the same length")
-  expect_error(estimate_motif_from_kmer(enriched_sixmers, "Custom"), "motif_set must be either \"CISBPRNA_mm\", \"CISBPRNA_hs\", \"RBNS\" or \"custom\"", fixed = TRUE)
+  expect_error(estimate_motif_from_kmer(enriched_sixmers, "Custom"), "motif_set must be either \"CISBPRNA_mm\", \"CISBPRNA_hs\", \"JASPAR_mm\", \"JASPAR_hs\", \"RBNS\" or \"custom\"", fixed = TRUE)
   expect_error(estimate_motif_from_kmer(enriched_sixmers, "custom"), "A custom motif_by_kmer_matrix is required for estimating custom motif occurance from kmers \n\n         use ouput from relate_kmer_PWM()", fixed = TRUE)
 
 })
@@ -95,15 +95,23 @@ enriched_sevenmers <- c("AGTACTA", "CAGCTAT", "CCCAAGT", "GGTATGG", "GCGCGCG", "
 test_that("tables are accessible", {
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fourmers, "CISBPRNA_mm"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fourmers, "CISBPRNA_hs"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fourmers, "JASPAR_mm"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fourmers, "JASPAR_hs"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fourmers, "RBNS"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fivemers, "CISBPRNA_mm"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fivemers, "CISBPRNA_hs"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fivemers, "JASPAR_mm"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fivemers, "JASPAR_hs"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fivemers, "RBNS"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sixmers, "CISBPRNA_mm"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sixmers, "CISBPRNA_hs"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sixmers, "JASPAR_mm"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sixmers, "JASPAR_hs"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sixmers, "RBNS"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sevenmers, "CISBPRNA_mm"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sevenmers, "CISBPRNA_hs"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sevenmers, "JASPAR_mm"))),FALSE)
+  expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sevenmers, "JASPAR_hs"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_sevenmers, "RBNS"))),FALSE)
   expect_equal(all(is.na(estimate_motif_from_kmer(enriched_fivemers, "custom", R5))),FALSE)
 })

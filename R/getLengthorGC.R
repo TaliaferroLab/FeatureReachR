@@ -7,7 +7,7 @@
 #'   \code{\link[Biostrings]{readDNAStringSet}} on a fasta file to create.
 #' @return A data frame with the length or GC content for each sequence in a
 #'   DNAStringSet object
-#' @seealso \code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+#' @seealso \code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
 #'   \code{\link[Biostrings]{letterFrequency}}
 #' @export
 #' @examples

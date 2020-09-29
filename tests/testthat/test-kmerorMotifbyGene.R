@@ -1,7 +1,7 @@
 context("kmer and motif by gene Outputs")
-library(RNAreachR)
+library(FeatureReachR)
 
-case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "RNAreachR"))
+case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "FeatureReachR"))
 
 k5 <- kmer_by_gene(case[1:10], 5)
 k6 <- kmer_by_gene(case[1:10], 6)

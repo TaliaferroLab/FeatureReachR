@@ -1,8 +1,8 @@
 context("get control, tx2gene and RNA breakdown")
-library(RNAreachR)
+library(FeatureReachR)
 
 mm_case_genes <- c("ENSMUSG00000097392", "ENSMUSG00000025607", "ENSMUSG00000030671", "ENSMUSG00000034764", "ENSMUSG00000116215", "ENSMUSG00000039556", "ENSMUSG00000066510", "ENSMUSG00000018160", "ENSMUSG00000114306", "ENSMUSG00000028277", "ENSMUSG00000037216", "ENSMUSG00000032299")
-mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), filter = TRUE, protein.coding = FALSE)
+mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), filter = TRUE, protein.coding = FALSE)
 longest_mm <- make_longest_df(mm_filtered_TxDb)
 control_tx <- get_ctrl_tx(longest_mm, mm_case_genes, "UTR3")
 
@@ -23,8 +23,8 @@ test_that("get control detects incorrect inputs", {
 
 })
 
-mm_RB <- RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), mm_case_tx)
-hs_RB <- RNA_breakdown(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"), hs_case_tx)
+mm_RB <- RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), mm_case_tx)
+hs_RB <- RNA_breakdown(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "FeatureReachR"), hs_case_tx)
 mm_madeup_Tx <- c("ENST01.1, ENST02.2", "ENST03.3")
 
 test_that("RNA Breakdown Output is correct dimension and types", {
@@ -46,9 +46,9 @@ test_that("RNA Breakdown Output is correct dimension and types", {
 })
 
 test_that("RNA Breakdown detects incorrect inputs", {
-  expect_error(RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), mm_case_genes), "Please ensure the transcript list contains transcript IDs and not gene IDs.")
-  expect_error(RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), hs_case_tx), "Please ensure the transcript list and gff are of the same species.")
-  expect_error(RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), mm_madeup_Tx), "Please ensure the transcript list and gff are of the same species.")
+  expect_error(RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), mm_case_genes), "Please ensure the transcript list contains transcript IDs and not gene IDs.")
+  expect_error(RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), hs_case_tx), "Please ensure the transcript list and gff are of the same species.")
+  expect_error(RNA_breakdown(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), mm_madeup_Tx), "Please ensure the transcript list and gff are of the same species.")
   expect_error(RNA_breakdown("testdata/partial_vM20.GFF3", mm_case_tx), "No transcript IDs in tx_list were not found in gff.")
 
 

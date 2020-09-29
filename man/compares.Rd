@@ -42,7 +42,7 @@ length_compare(case_fasta, ctrl_fasta)
 GC_compare(case_fasta, ctrl_fasta)
 }
 \seealso{
-\code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+\code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
   \code{\link[Biostrings]{letterFrequency}},
   \code{\link[effsize]{cliff.delta}}
 }

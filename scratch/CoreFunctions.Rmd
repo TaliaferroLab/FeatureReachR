@@ -235,7 +235,7 @@ RNA_breakdown("mydata/Gencodedat/gencode.vM20.annotation.gff3.gz", mm_tx)
 #If you instead have sets of genes, we recommend using expression data to find expresed transcripts within your experiment to represent your genes of interest.
 #otherwise, use gene2tx() to create transcript sets from either make_longest_df or make_median_df
 
-getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
+write_Sequence <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   #Check that transcript list contains transcripts
   
   print("Ensuring compatibility of GFF and transcript list...", quote = FALSE)
@@ -343,8 +343,8 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type){
   print(paste("Querried ", length(tx_gff), " of ", length(tx_list), " requested genes.", sep = ""), quote = FALSE)
   print(paste("Querried ", sum(Biostrings::width(seq))/1000, " KB of sequence.", sep = ""), quote = FALSE)
 }
-#getTxOut(hs_gff, hs_tx, "CDS", "mydata/hs_test", "gff3")
-#getTxOut(mm_gff, mm_tx, "CDS", "mydata/mm_test", "gff3")
+#write_Sequence(hs_gff, hs_tx, "CDS", "mydata/hs_test", "gff3")
+#write_Sequence(mm_gff, mm_tx, "CDS", "mydata/mm_test", "gff3")
 
 ```
 

@@ -10,7 +10,7 @@ motif_by_gene(PWM_list, DNAStringset)
 \item{PWM_list}{a named list of position weight matrices. A list of named
 matrices where the name is unique, and the matrix columns represent
 positions, and the rows are the probability of each base "A", "C", "G", and
-"T". Each column should sum to 1. RNAreachR has three PWM_lists build in:
+"T". Each column should sum to 1. FeatureReachR has three PWM_lists build in:
 "CISBPRNA_mm_PWM", "CISBPRNA_hs_PWM", and "RBNS_PWM".}
 
 \item{DNAStringSet}{A DNAStringSet Object. Use
@@ -32,6 +32,6 @@ motif_by_gene(RBNS_PWM, case_fasta)
 
 }
 \seealso{
-\code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+\code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
   \code{\link[Biostrings]{countPWM}}, \code{\link{motif_compare}}
 }

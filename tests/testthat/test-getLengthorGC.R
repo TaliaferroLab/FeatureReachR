@@ -1,7 +1,7 @@
 context("get length or GC Outputs")
-library(RNAreachR)
+library(FeatureReachR)
 
-case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "RNAreachR"))
+case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "FeatureReachR"))
 
 L <- get_length(case)
 GC <- get_GC(case)

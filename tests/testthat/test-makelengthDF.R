@@ -1,7 +1,7 @@
 context("make length df")
-library(RNAreachR)
+library(FeatureReachR)
 
-hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"))
+hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "FeatureReachR"))
 longest_hs <- make_longest_df(hs_filtered_TxDb)
 median_hs <- make_median_df(hs_filtered_TxDb)
 

@@ -17,11 +17,11 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(Biostrings)
 library(rtracklayer)
-library(RNAreachR)
+library(FeatureReachR)
 ```
 
-# Getting started with RNAreachR
-  RNAreachR is a package focused on comparing sets of RNA sequence.
+# Getting started with FeatureReachR
+  FeatureReachR is a package focused on comparing sets of RNA sequence.
 It is expected that users will have some set of sequences that they are experimentally interested in.
 These are usually defined by some sort of RNA sequencing experiment.
 For example, significantly differentially expressed genes between conditions.
@@ -34,7 +34,7 @@ This vignette is designed to help users go from a set of genes they are interest
 
   If you have already have a list of interesting transcripts, you can skip the poriton of this vignett titled: "Converting genes to transcripts in a meaningful way" and directly extract your sequence of interest.
 
-This aspect of RNAreachR is currently only compatible with Gencode human and mouse data.
+This aspect of FeatureReachR is currently only compatible with Gencode human and mouse data.
 
 ##Reading in Gencode gffs and filtering them
   In this vignette we will work with some example mouse data from an RNA sequencing experiment.
@@ -48,7 +48,7 @@ Because we aren't usually interested in every transcript, will first filter this
 
 ```{r, get gffs and filter}
 #Build genome gff into TxDb object and exclude low confidence transcripts
-mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"))
+mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"))
 mm_filtered_TxDb
 ```
   `filter_Tx` creates a TxDb object. 
@@ -103,21 +103,21 @@ The resulting transcript list may become shorter than the original gene list.
 This is because some genes only contain non-coding transcripts which lack CDS, 5'UTR and 3'UTR sequence.
 
 ##Exporting sequences of interesting transcripts
-  Now we have both the filtered genome annotation TxDb object and transcript lists. We can extract the sequences of the transcripts we find interesting and store them in either fasta files, gff3 files or both. These will be inputs for other RNAreachR functions.
+  Now we have both the filtered genome annotation TxDb object and transcript lists. We can extract the sequences of the transcripts we find interesting and store them in either fasta files, gff3 files or both. These will be inputs for other FeatureReachR functions.
   
 ```{r, tx list to sequence}
 #write fasta and gff3 files of 3'UTRs for each transcript list
-getTxOut(mm_filtered_TxDb, case_longest_tx, "UTR3", "example_case_longest_UTR3", "both")
-getTxOut(mm_filtered_TxDb, ctrl_longest_tx, "UTR3", "example_ctrl_longest_UTR3", "both")
+write_Sequence(mm_filtered_TxDb, case_longest_tx, "UTR3", "example_case_longest_UTR3", "both")
+write_Sequence(mm_filtered_TxDb, ctrl_longest_tx, "UTR3", "example_ctrl_longest_UTR3", "both")
 ```
   
-  With the `getTxOut` output files generated, you are ready to compare sequence characteristics with RNAreachR.
-RNAreachR functions rely on case and control fastas or case and control gff3 files and will be detailed in a different vignette.
+  With the `write_Sequence` output files generated, you are ready to compare sequence characteristics with FeatureReachR.
+FeatureReachR functions rely on case and control fastas or case and control gff3 files and will be detailed in a different vignette.
 
 ```{r, reading in fastas}
 #ready fastas into R as DNAStringSet Objects
-case_longest_UTR3 <- readDNAStringSet(system.file("extdata", "example_case_longest_UTR3.fa", package = "RNAreachR"))
-ctrl_longest_UTR3 <- readDNAStringSet(system.file("extdata", "example_ctrl_longest_UTR3.fa", package = "RNAreachR"))
+case_longest_UTR3 <- readDNAStringSet(system.file("extdata", "example_case_longest_UTR3.fa", package = "FeatureReachR"))
+ctrl_longest_UTR3 <- readDNAStringSet(system.file("extdata", "example_ctrl_longest_UTR3.fa", package = "FeatureReachR"))
 
 #example DNAStringSet objects
 case_longest_UTR3
@@ -126,8 +126,8 @@ ctrl_longest_UTR3
 
 ```{r, reading in gffs}
 #read gff3s into R
-case_gff <- import(system.file("extdata", "example_case_longest_UTR3.gff3", package = "RNAreachR"))
-ctrl_gff <- import(system.file("extdata", "example_ctrl_longest_UTR3.gff3", package = "RNAreachR"))
+case_gff <- import(system.file("extdata", "example_case_longest_UTR3.gff3", package = "FeatureReachR"))
+ctrl_gff <- import(system.file("extdata", "example_ctrl_longest_UTR3.gff3", package = "FeatureReachR"))
 #example gff
 case_gff
 ```

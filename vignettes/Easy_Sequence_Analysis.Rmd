@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(tidyverse)
 library(Biostrings)
-library(RNAreachR)
+library(FeatureReachR)
 ```
 
 ## Starting with some Sequence
@@ -25,8 +25,8 @@ library(RNAreachR)
 In this experiment, RBFOX2, a splicing factor, was knocked out. Several introns become enhanced, or preferentially retained due to the absence of RBFOX2. The fastas below contatain the sequences downstream from enhanced introns (case) or all other introns (ctrl).
 
 ```{r, load in RBFOX2 fastas}
-case <- readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "RNAreachR"))
-ctrl <- readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "RNAreachR"))
+case <- readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "FeatureReachR"))
+ctrl <- readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "FeatureReachR"))
 
 ```
 ## Easy length and GC comparisons
@@ -105,8 +105,8 @@ motif_plot(cisbp_estimate)
 #RBFOX2_RBNS_compare <- motif_compare(RBNS_PWM, case, ctrl)
 #RBFOX2_cisbpRNA_compare <- motif_compare(CISBPRNA_hs_PWM, case, ctrl)
 
-data(RBFOX2_RBNS_compare, package="RNAreachR")
-data(RBFOX2_cisbpRNA_compare, package = "RNAreachR")
+data(RBFOX2_RBNS_compare, package="FeatureReachR")
+data(RBFOX2_cisbpRNA_compare, package = "FeatureReachR")
 
 #PWM scanning comparison tables
 print(RBFOX2_RBNS_compare)

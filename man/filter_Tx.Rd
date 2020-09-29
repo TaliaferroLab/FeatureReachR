@@ -33,14 +33,14 @@ The output from \code{filter_Tx()} is a TxDb object containing a gene
 }
 \examples{
 # No filtering
-hs_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"), filter = FALSE, protein.coding = FALSE)
-mm_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), filter = FALSE, protein.coding = FALSE)
+hs_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "FeatureReachR"), filter = FALSE, protein.coding = FALSE)
+mm_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), filter = FALSE, protein.coding = FALSE)
 
 # Filter out low confidence transcripts
-hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"))
-mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"))
+hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "FeatureReachR"))
+mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"))
 
 # Filter out low confidence transcripts and non-coding transcripts
-hs_coding_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"), protein.coding = TRUE)
-mm_coding_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"), protein.coding = TRUE)
+hs_coding_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "FeatureReachR"), protein.coding = TRUE)
+mm_coding_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"), protein.coding = TRUE)
 }

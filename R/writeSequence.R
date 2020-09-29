@@ -1,6 +1,6 @@
 #' Export sequence of interest from a TxDb object
 #'
-#' \code{getTxOut} writes gff3 files and/or fasta files from genome TxDb objects
+#' \code{write_Sequence} writes gff3 files and/or fasta files from genome TxDb objects
 #' subsetted with a transcript list. Sequences extracted can be the entire
 #' transcripts (whole) or just the CDS, 3`UTR or 5`UTR sequences. If you instead
 #' have sets of genes, we recommend using expression data to find expresed
@@ -11,26 +11,27 @@
 #'   TxDb object is recommended.
 #' @param tx_list A character list. Must contain Ensembl transcript IDs and be
 #'   compatible with the gff (the same species).
-#' @param seq_type One of "whole", "CDS", "5pUTR", or "3pUTR".
+#' @param seq_type One of "whole", "CDS", "5pUTR", "3pUTR", or "promoter".
+#' @param promoter_size numeric. default is 2000 bases upstream of transcription start.
 #' @param file_name A single String. The file type (".fa", ".gff3") will be
 #'   appended behind the file name.
 #' @param output_type One of "fa", "gff3", or "both".
-#' @return \code{getTxOut} creates a named fasta and or gff3 file in the working
+#' @return \code{write_Sequence} creates a named fasta and or gff3 file in the working
 #'   directory.
 #' @seealso \code{\link{filter_Tx}}, \code{\link{gene2tx}},
 #' \code{\link{make_longest_df}}, \code{\link{make_median_df}}
 #' @examples
 #' #generate mydata/hs_test.fa and mydata/hs_test.gff3 containing CDS information for each transcript in hs_tx
-#' hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "RNAreachR"))
+#' hs_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.v33.annotation.gff3.gz", package = "FeatureReachR"))
 #' hs_tx <- c("ENST00000456328.2", "ENST00000338338.9", "ENST00000356026.10", "ENST00000607222.1", "ENST00000342066.8")
-#' getTxOut(hs_filtered_TxDb, hs_tx, "CDS", "mydata/hs_test", "both")
+#' write_Sequence(hs_filtered_TxDb, hs_tx, "CDS", "mydata/hs_test", "both")
 #'
 #' #generate mydata/mm_test.fa and mydata/mm_test.gff3 containing 5'UTR information for each transcript in mm_tx
-#' mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "RNAreachR"))
+#' mm_filtered_TxDb <- filter_Tx(system.file("extdata", "gencode.vM20.annotation.gff3.gz", package = "FeatureReachR"))
 #' mm_tx <- c("ENSMUST00000159265.1", "ENSMUST00000027032.5", "ENSMUST00000130201.7", "ENSMUST00000157375.1")
-#' getTxOut(mm_filtered_TxDb, mm_tx, "UTR5", "mydata/mm_test", "both")
+#' write_Sequence(mm_filtered_TxDb, mm_tx, "UTR5", "mydata/mm_test", "both")
 #' @export
-getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type) {
+write_Sequence <- function(TxDb_gff, tx_list, seq_type, file_name, output_type, promoter_size = 2000) {
   #Check that transcript list contains transcripts
 
   print("Ensuring compatibility of GFF and transcript list...", quote = FALSE)
@@ -87,8 +88,14 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type) {
     tx_gff <- tx_gff[names(tx_gff) %in% tx_list]
     print("filtering complete.", quote = FALSE)
 
+  } else if (seq_type == "promoter") {
+    print("filtering 3' UTRs...", quote = FALSE)
+    tx_gff <- GenomicFeatures::promoters(TxDb_gff, upstream = promoter_size, downstream = 0, use.names = TRUE)
+    tx_gff <- tx_gff[names(tx_gff) %in% tx_list]
+    print("filtering complete.", quote = FALSE)
+
   } else
-    stop("not appropriate seq type. please use one of \"whole\", \"CDS\", \"UTR5\" or \"UTR3\"")
+    stop("not appropriate seq type. please use one of \"whole\", \"CDS\", \"UTR5\", \"UTR3\" or, \"promoter\"")
 
   if(is.null(tx_gff) == TRUE | length(tx_gff) == 0) {
     stop("no sequences of type \"", seq_type, "\" found in transcript list", sep = "")
@@ -98,11 +105,17 @@ getTxOut <- function(TxDb_gff, tx_list, seq_type, file_name, output_type) {
 
   if (list_species == "human" & gff_species == "human") {
     print("extracting sequences...", quote = FALSE)
-    seq <- GenomicFeatures::extractTranscriptSeqs(BSgenome.Hsapiens.NCBI.GRCh38::Hsapiens, tx_gff)
+    if (seq_type == "promoter") {
+      seq <- GenomicFeatures::extractUpstreamSeqs(BSgenome.Hsapiens.NCBI.GRCh38::Hsapiens, tx_gff)
+    } else
+      seq <- GenomicFeatures::extractTranscriptSeqs(BSgenome.Hsapiens.NCBI.GRCh38::Hsapiens, tx_gff)
 
   } else if (list_species == "mouse" & gff_species == "mouse") {
     print("extracting sequences...", quote = FALSE)
-    seq <- GenomicFeatures::extractTranscriptSeqs(BSgenome.Mmusculus.UCSC.mm10::Mmusculus, tx_gff)
+    if (seq_type == "promoter") {
+      seq <- GenomicFeatures::extractUpstreamSeqs(BSgenome.Mmusculus.UCSC.mm10::Mmusculus, tx_gff)
+    } else
+      seq <- GenomicFeatures::extractTranscriptSeqs(BSgenome.Mmusculus.UCSC.mm10::Mmusculus, tx_gff)
 
   } else
     stop("Species type is unknown. Please ensure gff and transcript list are either mouse or human")

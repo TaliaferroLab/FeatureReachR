@@ -8,7 +8,7 @@
 #' @param k An Integer. The length of kmers to count. Values 3 < k < 8 are
 #'   recommended.
 #' @return a dataframe containing kmer counts across each sequences within the DNAStringSet
-#' @seealso \code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+#' @seealso \code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
 #'   \code{\link[Biostrings]{oligonucleotideFrequency}}, \code{\link{kmer_compare}}
 #' @examples
 #' case_fasta <- Biostrings::readDNAStringSet("example_case.fa")

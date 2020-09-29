@@ -12,7 +12,7 @@ relate_kmer_PWM(k, PWM_list)
 \item{PWM_list}{a named list of position weight matrices. A list of named
 matrices where the name is unique, and the matrix columns represent
 positions, and the rows are the probability of each base "A", "C", "G", and
-"T". Each column should sum to 1. RNAreachR has three PWM_lists build in:
+"T". Each column should sum to 1. FeatureReachR has three PWM_lists build in:
 "CISBPRNA_mm_PWM", "CISBPRNA_hs_PWM", and "RBNS_PWM".}
 }
 \value{
@@ -23,10 +23,10 @@ Create a logical matrix relating position weight matrices to kmers.
 This creates the input for \code{estimate_motif_from_kmer}
 These matrices take time to make. Logical matrices relating RBNS
 and CISBPRNA motifs to 4-, 5-, 6- and 7-mers are included within
-RNAreachR.
+FeatureReachR.
 }
 \examples{
-#this table is already saved in RNAreachR
+#this table is already saved in FeatureReachR
 relate_Kmer_PWM(4, RBNS_PWM)
 relate_kmer_PWM(6, custom_PWM_list)
 }

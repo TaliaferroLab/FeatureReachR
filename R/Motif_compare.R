@@ -6,8 +6,8 @@
 #' @param PWM_list a named list of position weight matrices. A list of named
 #'   matrices where the name is unique, and the matrix columns represent
 #'   positions, and the rows are the probability of each base "A", "C", "G", and
-#'   "T". Each column should sum to 1. RNAreachR has three PWM_lists build in:
-#'   "CISBPRNA_mm_PWM", "CISBPRNA_hs_PWM", and "RBNS_PWM".
+#'   "T". Each column should sum to 1. FeatureReachR has three PWM_lists build in:
+#'   "CISBPRNA_mm_PWM", "CISBPRNA_hs_PWM", "JASPAR_mm_PWM", "JASPAR_hs_PWM", and "RBNS_PWM".
 #' @param caseDNAStringSet A DNAStringSet Object. Use
 #'   \code{\link[Biostrings]{readDNAStringSet}} on a fasta file to create.
 #' @param ctrlDNAStringSet A DNAStringSet Object. Use
@@ -16,7 +16,7 @@
 #'   \code{wilcox.test}, then corrected by \code{p.adjust} with the \code{method = "BH"}.
 #'   The mean values for each DNAStringSet, and the log2 fold
 #'   change between those means.
-#' @seealso \code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+#' @seealso \code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
 #'   \code{\link[Biostrings]{countPWM}}, \code{\link{motif_by_gene}}
 #' @examples
 #' case_fasta <- Biostrings::readDNAStringSet("example_case.fa")

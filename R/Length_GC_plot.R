@@ -16,14 +16,14 @@
 #' GC_plot(case_fasta, ctrl_fasta)
 #' @export
 #' @describeIn Plots length of all case and ctrl sequences as violin plots.
-length_plot <- function(case, ctrl){
-  case_length <- RNAreachR::get_length(case) %>%
+length_plot <- function(case, ctrl, y_pos_above_case = 500){
+  case_length <- FeatureReachR::get_length(case) %>%
     dplyr::mutate(group = "case",
                   label = paste("case \nn = ", nrow(.), sep = ""))
 
-  ctrl_length <- RNAreachR::get_length(ctrl) %>%
+  ctrl_length <- FeatureReachR::get_length(ctrl) %>%
     dplyr::mutate(group = "ctrl",
-                  label = paste("ctrl \nn = ",nrow(.), sep = ""))
+                  label = paste("control \nn = ",nrow(.), sep = ""))
 
   length <- rbind(case_length, ctrl_length)
 
@@ -31,24 +31,24 @@ length_plot <- function(case, ctrl){
     ggplot2::geom_violin() +
     ggplot2::geom_boxplot(width = 0.25) +
     cowplot::theme_cowplot() +
-    ggpubr::stat_compare_means(method = "wilcox") +
+    ggpubr::stat_compare_means(method = "wilcox", label.y = max(case_length$length)+y_pos_above_case) +
     ggplot2::guides(fill = FALSE) +
     ggplot2::labs(x = "", y = "length")
 }
 #' @export
 #' @describeIn Plots GC content of all case and ctrl sequences as violin plots.
 GC_plot <- function(case, ctrl){
-  case_GC <- RNAreachR::get_GC(case) %>%
+  case_GC <- FeatureReachR::get_GC(case) %>%
     dplyr::mutate(group = "case",
                   label = paste("case \nn = ", nrow(.), sep = ""))
 
-  ctrl_GC <- RNAreachR::get_GC(ctrl) %>%
+  ctrl_GC <- FeatureReachR::get_GC(ctrl) %>%
     dplyr::mutate(group = "ctrl",
-                  label = paste("ctrl \nn = ",nrow(.), sep = ""))
+                  label = paste("control \nn = ",nrow(.), sep = ""))
 
   GC <- rbind(case_GC, ctrl_GC)
 
-  GC %>% ggplot2::ggplot(ggplot2::aes(x = factor(label), y = GC, fill = factor(label))) +
+  GC %>% ggplot2::ggplot(ggplot2::aes(x = factor(label), y = GC*100, fill = factor(label))) +
     ggplot2::geom_violin() +
     ggplot2::geom_boxplot(width = 0.25) +
     cowplot::theme_cowplot() +

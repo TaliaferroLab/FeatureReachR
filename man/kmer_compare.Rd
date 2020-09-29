@@ -29,7 +29,7 @@ ctrl_fasta <- Biostrings::readDNAStringSet("example_ctrl.fa")
 kmer_compare(case_fasta, ctrl_fasta, 6)
 }
 \seealso{
-\code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+\code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
   \code{\link[Biostrings]{oligonucleotideFrequency}},\code{\link{kmer_by_gene}},
    \code{\link[effsize]{cliff.delta}}
 }

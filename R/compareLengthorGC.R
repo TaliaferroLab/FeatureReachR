@@ -11,7 +11,7 @@
 #'   \code{wilcox.test}, the mean values for each DNAStringSet, the log2 Fold
 #'   change between those means, the effect size as calculated by
 #'   \code{\link[effsize]{cliff.delta}}
-#' @seealso \code{\link{getTxOut}}, \code{\link[Biostrings]{readDNAStringSet}},
+#' @seealso \code{\link{write_Sequence}}, \code{\link[Biostrings]{readDNAStringSet}},
 #'   \code{\link[Biostrings]{letterFrequency}},
 #'   \code{\link[effsize]{cliff.delta}}
 #' @examples

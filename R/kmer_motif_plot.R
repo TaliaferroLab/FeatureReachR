@@ -29,7 +29,7 @@ kmer_plot <- function(kmer_stats, sig_cutoff = 0.05){
       ggplot2::geom_point() +
       ggplot2::scale_color_manual(values = c("Red", "Black")) +
       ggplot2::scale_alpha_manual(values = c(1, 0.1)) +
-      ggplot2::geom_text(data = subset(p, sig == as.character(sig_cutoff)), ggplot2::aes(label = kmer), nudge_y = 1) +
+      ggrepel::geom_text_repel(data = subset(p, sig == as.character(sig_cutoff)), ggplot2::aes(label = kmer)) +
       cowplot::theme_cowplot()
   } else {
     p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +
@@ -49,7 +49,7 @@ motif_plot <- function(RBP_stats, sig_cutoff = 0.05){
       ggplot2::geom_point() +
       ggplot2::scale_color_manual(values = c("Red", "Black")) +
       ggplot2::scale_alpha_manual(values = c(1, 0.1)) +
-      ggplot2::geom_text(data = subset(p, sig == as.character(sig_cutoff)), ggplot2::aes(label = motif), nudge_y = 1) +
+      ggrepel::geom_text_repel(data = subset(p, sig == as.character(sig_cutoff)), ggplot2::aes(label = motif)) +
       cowplot::theme_cowplot()
   } else {
     p %>% ggplot2::ggplot(ggplot2::aes(x = log2FC, y = -log(p_adj), alpha = sig, col = sig)) +

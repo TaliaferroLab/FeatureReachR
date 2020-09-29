@@ -5,7 +5,7 @@
 #' from a kmer list. We recommend using significantly enriched or depleted kmers
 #' as calculated by \code{kmer_compare}.
 #' @param kmer_list a character list of kmers
-#' @param motif_set one of "CISBPRNA", "RBNS", or "custom"
+#' @param motif_set one of "CISBPRNA_mm","CISBPRNA_hs", "JASPAR_mm", "JASPAR_hs", "RBNS", or "custom"
 #' @param custom_motif_by_kmer_matrix NULL unless motif_set = "custom". Use
 #'   output logical matrix from \code{relate_Kmer_PWM}.
 #' @return a summary table of motif matches in kmers including the pvalue as
@@ -27,46 +27,70 @@ estimate_motif_from_kmer <- function(kmer_list, motif_set, custom_motif_by_kmer_
     k = unique(nchar(as.character(kmer_list)))
 
   #check motif_set input
-  if (motif_set != "CISBPRNA_mm" & motif_set != "CISBPRNA_hs" & motif_set != "RBNS" & motif_set != "custom"){
-    stop(paste("motif_set must be either \"CISBPRNA_mm\", \"CISBPRNA_hs\", \"RBNS\" or \"custom\"", quote = FALSE))
+  if (motif_set != "CISBPRNA_mm" & motif_set != "CISBPRNA_hs" & motif_set != "JASPAR_mm" & motif_set != "JASPAR_hs" & motif_set != "RBNS" & motif_set != "custom"){
+    stop("motif_set must be either \"CISBPRNA_mm\", \"CISBPRNA_hs\", \"JASPAR_mm\", \"JASPAR_hs\", \"RBNS\" or \"custom\"")
   }
 
   #get appropriate motif_by_kmer
   if (k == 4 & motif_set == "CISBPRNA_mm"){
-    motif_by_kmer <- RNAreachR:::fourmer_mm_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::fourmer_mm_cisbpRNA
   }
   else if (k == 4 & motif_set == "CISBPRNA_hs"){
-    motif_by_kmer <- RNAreachR:::fourmer_hs_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::fourmer_hs_cisbpRNA
   }
   else if (k == 4 & motif_set == "RBNS"){
-    motif_by_kmer <- RNAreachR:::fourmer_RBNS
+    motif_by_kmer <- FeatureReachR:::fourmer_RBNS
+  }
+  else if (k == 4 & motif_set == "JASPAR_hs"){
+    motif_by_kmer <- FeatureReachR:::fourmer_hs_JASPAR
+  }
+  else if (k == 4 & motif_set == "JASPAR_mm"){
+    motif_by_kmer <- FeatureReachR:::fourmer_mm_JASPAR
   }
   else if (k == 5 & motif_set == "CISBPRNA_mm"){
-    motif_by_kmer <- RNAreachR:::fivemer_mm_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::fivemer_mm_cisbpRNA
   }
   else if (k == 5 & motif_set == "CISBPRNA_hs"){
-    motif_by_kmer <- RNAreachR:::fivemer_hs_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::fivemer_hs_cisbpRNA
+  }
+  else if (k == 5 & motif_set == "JASPAR_mm"){
+    motif_by_kmer <- FeatureReachR:::fivemer_mm_JASPAR
+  }
+  else if (k == 5 & motif_set == "JASPAR_hs"){
+    motif_by_kmer <- FeatureReachR:::fivemer_hs_JASPAR
   }
   else if (k == 5 & motif_set == "RBNS"){
-    motif_by_kmer <- RNAreachR:::fivemer_RBNS
+    motif_by_kmer <- FeatureReachR:::fivemer_RBNS
   }
   else if (k == 6 & motif_set == "CISBPRNA_mm"){
-    motif_by_kmer <- RNAreachR:::sixmer_mm_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::sixmer_mm_cisbpRNA
   }
   else if (k == 6 & motif_set == "CISBPRNA_hs"){
-    motif_by_kmer <- RNAreachR:::sixmer_hs_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::sixmer_hs_cisbpRNA
+  }
+  else if (k == 6 & motif_set == "JASPAR_mm"){
+    motif_by_kmer <- FeatureReachR:::sixmer_mm_JASPAR
+  }
+  else if (k == 6 & motif_set == "JASPAR_hs"){
+    motif_by_kmer <- FeatureReachR:::sixmer_hs_JASPAR
   }
   else if (k == 6 & motif_set == "RBNS"){
-    motif_by_kmer <- RNAreachR:::sixmer_RBNS
+    motif_by_kmer <- FeatureReachR:::sixmer_RBNS
   }
   else if (k == 7 & motif_set == "CISBPRNA_mm"){
-    motif_by_kmer <- RNAreachR:::sevenmer_mm_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::sevenmer_mm_cisbpRNA
   }
   else if (k == 7 & motif_set == "CISBPRNA_hs"){
-    motif_by_kmer <- RNAreachR:::sevenmer_hs_cisbpRNA
+    motif_by_kmer <- FeatureReachR:::sevenmer_hs_cisbpRNA
+  }
+  else if (k == 7 & motif_set == "JASPAR_mm"){
+    motif_by_kmer <- FeatureReachR:::sevenmer_mm_JASPAR
+  }
+  else if (k == 7 & motif_set == "JASPAR_hs"){
+    motif_by_kmer <- FeatureReachR:::sevenmer_hs_JASPAR
   }
   else if (k == 7 & motif_set == "RBNS"){
-    motif_by_kmer <- RNAreachR:::sevenmer_RBNS
+    motif_by_kmer <- FeatureReachR:::sevenmer_RBNS
   }
 
   if (motif_set == "custom" & is.null(custom_motif_by_kmer_matrix) == TRUE){
@@ -95,7 +119,7 @@ estimate_motif_from_kmer <- function(kmer_list, motif_set, custom_motif_by_kmer_
                   p_val = ifelse(all_kmer > 4^k && input_kmer > length(kmer_list), phyper(length(kmer_list)-1, length(kmer_list), (4^k)-length(kmer_list), 4^k, lower.tail = FALSE),
                                  ifelse(all_kmer > 4^k, phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), 4^k, lower.tail = FALSE),
                                  ifelse(input_kmer > length(kmer_list), phyper(length(kmer_list)-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE),
-                                 phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer, lower.tail = FALSE))))) %>%
+                                 suppressWarnings(phyper(input_kmer-1, length(kmer_list), (4^k)-length(kmer_list), all_kmer + input_kmer, lower.tail = FALSE)))))) %>%
     dplyr::ungroup() %>%
     dplyr::mutate(p_adj = p.adjust(p_val, method = "BH")) %>%
     dplyr::arrange(p_adj)

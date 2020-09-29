@@ -1,4 +1,4 @@
 library(testthat)
-library(RNAreachR)
+library(FeatureReachR)
 
-test_check("RNAreachR")
+test_check("FeatureReachR")

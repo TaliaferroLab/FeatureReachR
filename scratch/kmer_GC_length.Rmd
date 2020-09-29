@@ -20,8 +20,8 @@ library(cowplot)
 #FMR1_UTR3_tx <- gene2Tx(longest_mm, FMR1_genes, "UTR3") #1s
 #FMR1_UTR3_tx_ctrl <- gene2Tx(longest_mm, FMR1_genes_ctrl, "UTR3") #1s
 
-#getTxOut(mm_f_gff, FMR1_UTR3_tx, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1", "fa") 
-#getTxOut(mm_f_gff, FMR1_UTR3_tx_ctrl, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1_ctrl", "fa")
+#write_Sequence(mm_f_gff, FMR1_UTR3_tx, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1", "fa") 
+#write_Sequence(mm_f_gff, FMR1_UTR3_tx_ctrl, "UTR3", "mydata/FMR1dat/longest_3UTR_FMR1_ctrl", "fa")
 
 longest_3UTR_FMR1 <- readDNAStringSet("mydata/FMR1dat/longest_3UTR_FMR1.fa") #30s
 longest_3UTR_FMR1_ctrl <- readDNAStringSet("mydata/FMR1dat/longest_3UTR_FMR1_ctrl.fa") #30s
@@ -449,8 +449,8 @@ custom_PWM_list <- readRDS("mydata/example_custom_PWM_list")
 custom_PWM_by_gene(custom_PWM_list, longest_3UTR_FMR1)
 custom_PWM_compare(custom_PWM_list, longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 
-RBNS_PWM <- RNAreachR::RBNS_PWM
-CISBPRNA_mm_PWM <- RNAreachR::CISBPRNA_PWM
+RBNS_PWM <- FeatureReachR::RBNS_PWM
+CISBPRNA_mm_PWM <- FeatureReachR::CISBPRNA_PWM
 cisbp_new_res <- custom_PWM_compare(CISBPRNA_PWM, longest_3UTR_FMR1, longest_3UTR_FMR1_ctrl)
 
 ```

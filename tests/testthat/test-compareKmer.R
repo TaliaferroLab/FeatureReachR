@@ -1,8 +1,8 @@
 context("kmer compare Outputs")
-library(RNAreachR)
+library(FeatureReachR)
 
-case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "RNAreachR"))
-ctrl <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "RNAreachR"))
+case <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Enhanced.fasta", package = "FeatureReachR"))
+ctrl <- Biostrings::readDNAStringSet(system.file("extdata", "DownstreamIntron.Control.fasta", package = "FeatureReachR"))
 
 k5 <- kmer_compare(case, ctrl, 5)
 k6 <- kmer_compare(case, ctrl, 6)

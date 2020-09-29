@@ -1,0 +1,6 @@
+##gff-version 3
+##source-version rtracklayer 1.46.0
+##date 2020-09-27
+1	rtracklayer	sequence_feature	4369	11868	.	+	.	tx_id=1;tx_name=ENST00000456328.2;ID=ENST00000456328.2
+1	rtracklayer	sequence_feature	1624673	1632172	.	+	.	tx_id=122;tx_name=ENST00000356026.10;ID=ENST00000356026.10
+1	rtracklayer	sequence_feature	1375496	1382995	.	-	.	tx_id=5483;tx_name=ENST00000338338.9;ID=ENST00000338338.9
