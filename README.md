@@ -1,7 +1,7 @@
 # FeatureReachR
 The FeatureReachR packages enables users to take a deep dive into human or mouse data sets to extract biologically relevant sequence features in experimental versus control genes. FeatureReachR allows analysis of a diverse set of features with the convenience of R/RStudio. Biological insight is streamlined with this package, and prevents users from the tasks of wrangling public data sets themselves, such as RNA binding protein occupancy (e.g. CLIP-seq), conservation (phastcons), and protein binding motif databases. The package makes use of a variety of custom functions and existing tools. Our goal was not to reinvent the wheel, but rather provide a convenient platform to query sequence data in a thorough manner. See vignette(FeatureReachR) for more details.
 ## Installation
-devtools::
+devtools::install_github("TaliaferroLab/FeatureReachR")
 ## Input Data Format
 The core function accepts a list of mouse or human ensembl IDs, and returns the sequence (.fa) and annotation (.gff) for those genes. There are functions to conveniently convert gene lists to transcript lists. Users can specify if the entirety of each gene is of interest, or if only specific regions are instead wanted (whole transcript, 5'UTR, 3'UTR, CDS, or upstream promoter region). These filtered .fa and .gff files serve as the input for the downstream functions. 
 
