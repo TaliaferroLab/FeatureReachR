@@ -39,7 +39,7 @@ filter_Tx <- function(gff, filter = TRUE, protein.coding = FALSE) {
   if (filter == TRUE) {
     print("filtering out low confidence transcripts...", quote = FALSE)
     # remove low confidence transcripts
-    gff <- gff[gff$transcript_support_level == "1" | gff$transcript_support_level == "2" | is.na(gff$transcript_support_level)]
+    gff <- gff[gff$transcript_support_level == "1" | gff$transcript_support_level == "2" | gff$transcript_support_level == "NA" | is.na(gff$transcript_support_level)]
     # remove transcripts with undefined starts or ends
     NF <- c("cds_start_NF", "cds_end_NF", "mRNA_start_NF", "mRNA_end_NF")
     `%out%` = Negate(`%in%`)
